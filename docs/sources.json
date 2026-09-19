@@ -1,0 +1,151 @@
+{
+  "schema_version": "1.0",
+  "reviewed_on": "2026-09-17",
+  "note": "Primary references support platform/protocol facts. PROJECT entries are design requirements, not claims of implementation. Pin runtime versions before deploying.",
+  "sources": [
+    {
+      "id": "PROJECT",
+      "url": null,
+      "title": "User requirement and project design",
+      "supports": "Preserve lab behavior, isolation, configured paths and intentional failures."
+    },
+    {
+      "id": "RFC-HOST",
+      "url": "https://www.rfc-editor.org/rfc/rfc1122",
+      "title": "RFC 1122: Internet host requirements",
+      "supports": "IPv4 host local/remote routing and gateway behavior."
+    },
+    {
+      "id": "RFC-ROUTER",
+      "url": "https://www.rfc-editor.org/rfc/rfc1812",
+      "title": "RFC 1812: IPv4 router requirements",
+      "supports": "Forwarding, route selection, TTL and ICMP."
+    },
+    {
+      "id": "RFC-RIP",
+      "url": "https://www.rfc-editor.org/rfc/rfc2453",
+      "title": "RFC 2453: RIPv2",
+      "supports": "Update transport, metrics and protocol behavior."
+    },
+    {
+      "id": "FRR-STATIC",
+      "url": "https://docs.frrouting.org/en/latest/static.html",
+      "title": "FRR static routing",
+      "supports": "Static route forms, next hops and route preferences."
+    },
+    {
+      "id": "FRR-RIP",
+      "url": "https://docs.frrouting.org/en/latest/ripd.html",
+      "title": "FRR RIP",
+      "supports": "Version, interfaces, passive behavior and unicast neighbors."
+    },
+    {
+      "id": "FRR-OSPF",
+      "url": "https://docs.frrouting.org/en/latest/ospfd.html",
+      "title": "FRR OSPFv2",
+      "supports": "Interface network types, areas, neighbors and protocol configuration."
+    },
+    {
+      "id": "LINUX-NETNS",
+      "url": "https://man7.org/linux/man-pages/man7/network_namespaces.7.html",
+      "title": "Linux network namespaces",
+      "supports": "Isolation of interfaces, routes and network stacks."
+    },
+    {
+      "id": "LINUX-BRIDGE",
+      "url": "https://docs.kernel.org/networking/bridge.html",
+      "title": "Linux Ethernet bridge",
+      "supports": "VLAN filtering, bridge ports and multicast behavior."
+    },
+    {
+      "id": "LINUX-VXLAN",
+      "url": "https://docs.kernel.org/networking/vxlan.html",
+      "title": "Linux VXLAN",
+      "supports": "Ethernet overlay and forwarding database."
+    },
+    {
+      "id": "LINUX-LINK",
+      "url": "https://man7.org/linux/man-pages/man8/ip-link.8.html",
+      "title": "ip-link manual",
+      "supports": "Veth, VXLAN endpoint and interface controls."
+    },
+    {
+      "id": "LINUX-SYSCTL",
+      "url": "https://docs.kernel.org/networking/ip-sysctl.html",
+      "title": "Linux IP sysctl",
+      "supports": "IP forwarding, reverse path filtering and routing controls."
+    },
+    {
+      "id": "AWS-ROUTES",
+      "url": "https://docs.aws.amazon.com/vpc/latest/userguide/route-table-options.html",
+      "title": "AWS routing options",
+      "supports": "IGW/NAT, TGW and explicit appliance routing."
+    },
+    {
+      "id": "AWS-PEERING",
+      "url": "https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-basics.html",
+      "title": "VPC peering behavior",
+      "supports": "Peering reachability and non-transitivity."
+    },
+    {
+      "id": "AWS-TGW",
+      "url": "https://docs.aws.amazon.com/vpc/latest/tgw/how-transit-gateways-work.html",
+      "title": "Transit Gateway routing",
+      "supports": "Attachments, route tables and propagation."
+    },
+    {
+      "id": "AWS-MULTICAST",
+      "url": "https://docs.aws.amazon.com/vpc/latest/tgw/tgw-multicast-overview.html",
+      "title": "TGW multicast",
+      "supports": "Dedicated multicast setup and limitations."
+    },
+    {
+      "id": "AWS-SUBNET",
+      "url": "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html",
+      "title": "AWS subnet addressing",
+      "supports": "IPv4 CIDR sizes and reserved addresses."
+    },
+    {
+      "id": "AWS-SG",
+      "url": "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+      "title": "AWS security groups",
+      "supports": "Stateful allow rules and association with resources."
+    },
+    {
+      "id": "AWS-NACL",
+      "url": "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html",
+      "title": "AWS network ACLs",
+      "supports": "Stateless ordered subnet filtering."
+    },
+    {
+      "id": "AWS-ENI",
+      "url": "https://docs.aws.amazon.com/ec2/latest/instancetypes/gp.html#gp_network",
+      "title": "EC2 interface limits",
+      "supports": "Instance-specific maximum network interfaces."
+    },
+    {
+      "id": "ANSIBLE-PACKAGE",
+      "url": "https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/package_module.html",
+      "title": "Ansible package module",
+      "supports": "Package installation intentions and parameters."
+    },
+    {
+      "id": "ANSIBLE-SERVICE",
+      "url": "https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/service_module.html",
+      "title": "Ansible service module",
+      "supports": "Service state and enabled settings."
+    },
+    {
+      "id": "ANSIBLE-TEMPLATE",
+      "url": "https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/template_module.html",
+      "title": "Ansible template module",
+      "supports": "Rendering downstream configuration files."
+    },
+    {
+      "id": "NGINX-HTTP",
+      "url": "https://nginx.org/en/docs/http/ngx_http_core_module.html",
+      "title": "NGINX HTTP core module",
+      "supports": "HTTP listen and document-root configuration."
+    }
+  ]
+}

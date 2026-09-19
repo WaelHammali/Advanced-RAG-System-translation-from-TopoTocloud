@@ -1,0 +1,45 @@
+name: Offline checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m ruff check .
+      - run: python -m ruff format --check .
+      - run: python tools/validate_knowledge_base.py
+      - run: python -m pytest -q
+
+  artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      - run: python -m pip install 'PyYAML>=6,<7' 'ansible-core>=2.17,<2.20'
+      - run: python 'Generator terraform/generator.py' --input examples/generator_plan.json --output generated/terraform
+      - run: python 'Generator ansible/generator.py' --input examples/generator_plan.json --output generated/ansible
+      - run: terraform -chdir=generated/terraform fmt
+      - run: terraform -chdir=generated/terraform init -backend=false -input=false
+      - run: terraform -chdir=generated/terraform validate
+      - run: ansible-playbook -i generated/ansible/inventory.example.yml generated/ansible/site.yml --syntax-check

@@ -1,0 +1,5 @@
+# Lightweight offline regression suite and source checks; no model downloads.
+pytest>=9,<10
+numpy>=1.26,<3
+PyYAML>=6.0,<7
+ruff==0.16.6

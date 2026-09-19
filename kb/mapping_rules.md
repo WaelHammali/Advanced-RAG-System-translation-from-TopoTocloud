@@ -1,75 +1,41 @@
-# Core Interpretation and Mapping Rules
+## [MAP-001] Map source devices to behavioral roles
+Rule-ID: MAP-001
+Kind: rule
+Mode: behavioral_lab
+Status: target_specification
+Keywords: PC, server, router, switch, firewall, mapping
+Applies: Translating a physical network in behavioral_lab mode.
+Required: Host: isolated network stack. Router: isolated forwarding stack with requested routing. Switch: bridge with declared ports/VLANs. Firewall: policy at its declared point. AWS resources host transport.
+Forbidden: Do not equate router with VPC, switch with AWS subnet, or inline firewall with SG. Do not invent a lab router merely to own a VPC.
+Expected: No-router same-LAN input remains a lab without a router; router-dependent traffic traverses router stacks.
+Verify: Map every source object to its runtime and separate transport placement.
+Sources: PROJECT, LINUX-NETNS, LINUX-BRIDGE
+Related: BACKEND-001, L2-001
 
-## Final router/VPC model
+## [MAP-002] Preserve exact links and disconnected components
+Rule-ID: MAP-002
+Kind: rule
+Mode: behavioral_lab
+Status: target_specification
+Keywords: topology graph, chain, ring, disconnected, direct host
+Applies: A topology contains multiple routers, switch ports or disconnected components.
+Required: Represent links by endpoint interfaces. Keep separate router-to-host cables separate. Preserve source graph components, switch ports and cable identities regardless of worker placement.
+Forbidden: Do not merge direct hosts into one LAN or connect every VPC because there are three routers.
+Expected: Disconnected components stay disconnected; a chain retains required intermediate routers unless an explicit alternative exists.
+Verify: Compare source/realized adjacency; probe forbidden pairs and declared faults.
+Sources: PROJECT
+Related: BACKEND-002, EX-ISOLATED, EX-DIRECT
 
-There are two different cases and they must not be mixed.
-
-### Case A — No real router in the input topology
-
-If the user provides only PCs, servers, switches, LANs, or VLANs and no router is drawn:
-
-- Infer one logical AWS routing domain.
-- Create one AWS VPC for that logical domain.
-- Create one subnet per switch/LAN/VLAN.
-- If there are only direct PC-to-PC links and no switch, infer one logical switch/LAN subnet.
-- Put PCs/servers into the correct subnet as EC2 instances.
-- Do NOT create a router EC2 appliance.
-- Do NOT create FRRouting/VyOS.
-
-### Case B — A real router exists in the input topology
-
-If the user explicitly draws or mentions a router such as R1, R2, etc.:
-
-- The router defines/owns an AWS VPC routing domain.
-- The router must also be represented as an EC2 router appliance.
-- The router EC2 uses one interface/ENI per connected LAN/subnet when possible.
-- The router EC2 instance type is selected from the router edge/interface count: 1-2 edges -> t3.micro, 3 edges -> t3.small, 4-5 edges -> t3.medium, 6+ edges -> t3.large.
-- The primary interface is placed in the first subnet attached to the router.
-- Secondary ENIs are attached to the remaining router subnets.
-- `source_dest_check = false` must be set on router EC2 instances and router ENIs.
-- Routers use PC1.pem by default for SSH management when PC1 exists.
-- Terraform creates the router EC2 appliance and installs/enables FRRouting by default with Linux IP forwarding.
-- Ansible is used later for protocol-specific configuration such as OSPF areas/networks/neighbors, not for the base FRRouting installation.
-
-### Case C — OSPF/FRRouting/VyOS requested in Ansible
-
-Real router EC2 appliances already have FRRouting installed/enabled by Terraform user_data.
-
-If the Ansible request contains OSPF, FRR, FRRouting, VyOS, or router appliance behavior:
-
-- Configure the existing router EC2 appliances.
-- Keep Linux IP forwarding enabled.
-- Push FRRouting/VyOS protocol configuration such as OSPF router-id, networks, areas, and checks.
-- Keep `source_dest_check = false`.
-
-## Base mappings
-
-- PC -> EC2 instance
-- Server -> EC2 instance by default
-- Switch / LAN / VLAN -> AWS subnet
-- Real router -> AWS VPC + EC2 router appliance with FRRouting installed by default
-- Inferred missing router -> AWS VPC only, no EC2 router
-- Firewall -> Security Group by default unless explicitly overridden
-- Router-to-router link -> VPC Peering or Transit Gateway plus router appliances in each VPC
-
-## LAN/subnet rules
-
-- One switch/LAN segment = one subnet.
-- Multiple hosts on the same switch are placed in the same subnet unless public/private split is required.
-- One router connected to multiple switches/LANs = one VPC with multiple subnets and a router EC2 with multiple ENIs.
-- A direct router-to-PC/server link creates a dedicated subnet inside that router's VPC.
-
-## Lab access defaults
-
-- PCs are public by default for lab SSH access unless explicitly private.
-- Each PC gets its own PEM file.
-- Servers are private by default unless explicitly public.
-- Real routers use PC1.pem by default when PC1 exists.
-- SSH from `admin_cidr` is allowed for lab access.
-- ICMP is allowed internally for ping tests.
-
-## Connectivity rules
-
-- If two routers are connected and there are exactly two routing domains, use VPC peering by default.
-- If there are three or more routers, chained routers, ring, star, mesh, or hub/spoke patterns, use Transit Gateway by default.
-- No OSPF configuration is generated by Terraform. OSPF is an Ansible layer.
+## [MAP-003] Declare behavioral lab or cloud-native migration mode
+Rule-ID: MAP-003
+Kind: rule
+Mode: all
+Status: target_specification
+Keywords: migration, emulation, cloud native, mode
+Applies: Selecting the translation's promised level of equivalence.
+Required: Use behavioral_lab for real routing exercises. cloud_native may use AWS-managed routing when its connectivity-only scope and differences are accepted.
+Forbidden: Do not label peering or TGW reachability as preserved router paths, Ethernet, RIP or OSPF.
+Expected: Behavioral mode preserves supported protocol/path conditions. Cloud-native mode reports adaptations and no router-failure equivalence.
+Verify: Record mode and unsupported properties before declaring a plan ready.
+Sources: PROJECT, AWS-ROUTES
+Related: CORE-001, AWS-001

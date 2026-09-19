@@ -1,12 +1,13 @@
-# Example: Two Routers
-
-Topology:
-PC1 -- SW1 -- R1 -- R2 -- SW2 -- PC2
-
-Interpretation:
-- R1 -> VPC 1 plus EC2-R1 router appliance.
-- R2 -> VPC 2 plus EC2-R2 router appliance.
-- SW1/SW2 -> subnets in their router VPCs.
-- PC1/PC2 -> EC2 hosts in their LAN subnets.
-- Use VPC peering for inter-VPC connectivity by default for exactly two routers.
-- OSPF is not configured unless requested later by Ansible.
+## [EX-PEERING] Peering is only an optional transport between two workers
+Rule-ID: EX-PEERING
+Kind: example
+Mode: behavioral_lab
+Status: target_specification
+Keywords: two routers, VPC peering, transport
+Applies: R1 and R2 lab nodes are placed on workers in two peered VPCs.
+Required: Configure transport endpoint reachability and an explicit lab link between R1/R2. Keep lab addresses isolated. Endpoint LAN routes must be supplied/learned within the lab.
+Forbidden: Do not route PC LAN prefixes directly over peering or infer lab routing from two routers.
+Expected: Transport ping can pass while lab PC ping fails for missing routes; valid lab routing can enable the PC flow.
+Verify: Probe worker reachability and lab reachability separately; remove a required lab route to prove no bypass.
+Sources: PROJECT
+Related: AWS-002, STATIC-001

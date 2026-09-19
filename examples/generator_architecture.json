@@ -1,0 +1,292 @@
+{
+  "schema_version": "1.0",
+  "translation_mode": "behavioral_lab",
+  "cloud": {
+    "provider": "aws",
+    "region": "us-west-2"
+  },
+  "components": [
+    {
+      "id": "PC1",
+      "type": "pc",
+      "interfaces": [
+        {
+          "id": "eth0",
+          "ipv4": "10.10.10.10/24",
+          "enabled": true
+        }
+      ],
+      "routing": {
+        "default_gateway": {
+          "interface": "eth0",
+          "via": "10.10.10.1"
+        }
+      }
+    },
+    {
+      "id": "SW1",
+      "type": "switch",
+      "interfaces": [
+        {
+          "id": "port1",
+          "enabled": true,
+          "access_vlan": 10
+        },
+        {
+          "id": "port2",
+          "enabled": true,
+          "access_vlan": 10
+        }
+      ]
+    },
+    {
+      "id": "R1",
+      "type": "router",
+      "interfaces": [
+        {
+          "id": "lan0",
+          "ipv4": "10.10.10.1/24",
+          "enabled": true
+        },
+        {
+          "id": "wan0",
+          "ipv4": "10.255.0.1/30",
+          "enabled": true
+        }
+      ],
+      "routing": {
+        "ipv4_forwarding": true,
+        "static_routes": [],
+        "protocols": [
+          {
+            "name": "ospf",
+            "enabled": true,
+            "router_id": "1.1.1.1",
+            "interfaces": [
+              {
+                "id": "wan0",
+                "area": "0.0.0.0",
+                "network_type": "point-to-point",
+                "cost": 10
+              },
+              {
+                "id": "lan0",
+                "area": "0.0.0.0",
+                "passive": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "R2",
+      "type": "router",
+      "interfaces": [
+        {
+          "id": "lan0",
+          "ipv4": "10.20.20.1/24",
+          "enabled": true
+        },
+        {
+          "id": "wan0",
+          "ipv4": "10.255.0.2/30",
+          "enabled": true
+        }
+      ],
+      "routing": {
+        "ipv4_forwarding": true,
+        "static_routes": [],
+        "protocols": [
+          {
+            "name": "ospf",
+            "enabled": true,
+            "router_id": "2.2.2.2",
+            "interfaces": [
+              {
+                "id": "wan0",
+                "area": "0.0.0.0",
+                "network_type": "point-to-point",
+                "cost": 10
+              },
+              {
+                "id": "lan0",
+                "area": "0.0.0.0",
+                "passive": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SW2",
+      "type": "switch",
+      "interfaces": [
+        {
+          "id": "port1",
+          "enabled": true,
+          "access_vlan": 20
+        },
+        {
+          "id": "port2",
+          "enabled": true,
+          "access_vlan": 20
+        },
+        {
+          "id": "port3",
+          "enabled": true,
+          "access_vlan": 20
+        }
+      ]
+    },
+    {
+      "id": "PC2",
+      "type": "pc",
+      "interfaces": [
+        {
+          "id": "eth0",
+          "ipv4": "10.20.20.20/24",
+          "enabled": true
+        }
+      ],
+      "routing": {
+        "default_gateway": {
+          "interface": "eth0",
+          "via": "10.20.20.1"
+        }
+      }
+    },
+    {
+      "id": "WEB1",
+      "type": "server",
+      "interfaces": [
+        {
+          "id": "eth0",
+          "ipv4": "10.20.20.30/24",
+          "enabled": true
+        }
+      ],
+      "routing": {
+        "default_gateway": {
+          "interface": "eth0",
+          "via": "10.20.20.1"
+        }
+      },
+      "os": {
+        "distribution": "debian",
+        "version": "12"
+      },
+      "services": [
+        {
+          "protocol": "http",
+          "implementation": "nginx",
+          "enabled": true,
+          "listen": {
+            "address": "10.20.20.30",
+            "port": 80
+          },
+          "document_root": "/var/www/html",
+          "content": {
+            "index.html": "Hello from WEB1"
+          }
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "link-1",
+      "source": {
+        "component": "PC1",
+        "interface": "eth0"
+      },
+      "target": {
+        "component": "SW1",
+        "interface": "port1"
+      },
+      "enabled": true
+    },
+    {
+      "id": "link-2",
+      "source": {
+        "component": "SW1",
+        "interface": "port2"
+      },
+      "target": {
+        "component": "R1",
+        "interface": "lan0"
+      },
+      "enabled": true
+    },
+    {
+      "id": "link-3",
+      "source": {
+        "component": "R1",
+        "interface": "wan0"
+      },
+      "target": {
+        "component": "R2",
+        "interface": "wan0"
+      },
+      "enabled": true
+    },
+    {
+      "id": "link-4",
+      "source": {
+        "component": "R2",
+        "interface": "lan0"
+      },
+      "target": {
+        "component": "SW2",
+        "interface": "port1"
+      },
+      "enabled": true
+    },
+    {
+      "id": "link-5",
+      "source": {
+        "component": "SW2",
+        "interface": "port2"
+      },
+      "target": {
+        "component": "PC2",
+        "interface": "eth0"
+      },
+      "enabled": true
+    },
+    {
+      "id": "link-6",
+      "source": {
+        "component": "SW2",
+        "interface": "port3"
+      },
+      "target": {
+        "component": "WEB1",
+        "interface": "eth0"
+      },
+      "enabled": true
+    }
+  ],
+  "ansible": {
+    "tasks": [
+      {
+        "id": "web-tools",
+        "target_ids": [
+          "WEB1"
+        ],
+        "operation": "ansible.builtin.package",
+        "parameters": {
+          "name": [
+            "curl"
+          ],
+          "state": "present"
+        },
+        "depends_on": []
+      }
+    ]
+  },
+  "generation": {
+    "profile": "aws_single_host_docker_v1"
+  }
+}

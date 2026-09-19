@@ -1,0 +1,318 @@
+"""Exercise the JSON boundary without a live model, cloud or generator."""
+
+import json
+import os
+import subprocess
+import sys
+from copy import deepcopy
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+import app
+from config import CORE_RULE_IDS
+from planner import plan_with_rag
+from retriever import KnowledgeRetriever
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class ModelClient:
+    def __init__(self, payload, *, finish_reason="stop"):
+        self.payload = payload
+        self.finish_reason = finish_reason
+        self.calls = []
+        self.chat = SimpleNamespace(completions=self)
+
+    def create(self, **request):
+        self.calls.append(request)
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content=self.payload),
+                    finish_reason=self.finish_reason,
+                )
+            ]
+        )
+
+
+@pytest.fixture
+def architecture():
+    return json.loads((ROOT / "examples/architecture.json").read_text())
+
+
+@pytest.fixture
+def retrieval(tmp_path):
+    return KnowledgeRetriever(backend="lexical", index_dir=tmp_path / "index")
+
+
+def test_mixed_configuration_reaches_model_and_input_remains_unchanged(architecture, retrieval):
+    architecture["custom"] = {"unicode": "réseau", "values": [False, None, 0]}
+    architecture["components"][2]["routing"]["protocols"][0]["enabled"] = False
+    architecture["components"][-1]["services"][0]["enabled"] = False
+    before = deepcopy(architecture)
+    model_plan = {
+        "cloud_plan": {"translation_mode": "behavioral_lab", "custom_mapping": "keep"},
+        "ansible_plan": {"tasks": [{"target_ids": ["WEB1"], "operation": "custom"}]},
+        "limitations": [],
+        "rule_ids": ["OSPF-001", "SVC-HTTP"],
+        # These model-authored values must never replace authoritative inputs.
+        "architecture": {"invented": True},
+        "knowledge": [],
+    }
+    client = ModelClient(json.dumps(model_plan))
+    output = app.plan_architecture(architecture, client=client, retriever=retrieval)
+    assert architecture == before == output["architecture"]
+    output["architecture"]["custom"]["values"].append("mutation")
+    assert architecture == before
+    (request,) = client.calls
+    supplied = json.loads(request["messages"][1]["content"])
+    assert supplied["architecture"] == before
+    ids = {chunk["rule_id"] for chunk in supplied["knowledge"]}
+    assert {*CORE_RULE_IDS, "OSPF-001", "SVC-HTTP", "AUTO-001"} <= ids
+    assert output["cloud_plan"] == model_plan["cloud_plan"]
+    assert output["ansible_plan"] == model_plan["ansible_plan"]
+    assert request["response_format"] == {"type": "json_object"}
+    assert {item["rule_id"] for item in output["knowledge"]} == ids
+
+
+def test_arbitrary_extra_fields_are_preserved_on_ready_input(architecture, retrieval):
+    architecture["custom_component_format"] = {"strange_field": "kept"}
+    client = ModelClient(
+        '{"cloud_plan": {}, "ansible_plan": {}, "rule_ids": [], "limitations": []}'
+    )
+    output = app.plan_architecture(architecture, client=client, retriever=retrieval)
+    assert output["architecture"] == architecture
+    assert len(client.calls) == 1
+
+
+def test_many_routers_do_not_override_model_plan(retrieval):
+    architecture = {
+        "components": [{"id": f"Edge-{i}", "type": "router", "interfaces": []} for i in range(9)],
+        "edges": [],
+    }
+    for index in range(8):
+        left, right = architecture["components"][index : index + 2]
+        left["interfaces"].append({"id": "right", "ipv4": f"10.254.{index}.1/30"})
+        right["interfaces"].append({"id": "left", "ipv4": f"10.254.{index}.2/30"})
+        architecture["edges"].append(
+            {
+                "id": f"cable-{index}",
+                "source": {"component": left["id"], "interface": "right"},
+                "target": {"component": right["id"], "interface": "left"},
+            }
+        )
+    expected = {
+        "cloud_plan": {"networking": {"links": []}},
+        "ansible_plan": {"tasks": []},
+        "rule_ids": [],
+        "limitations": [],
+    }
+    output = app.plan_architecture(
+        architecture, client=ModelClient(json.dumps(expected)), retriever=retrieval
+    )
+    assert output["cloud_plan"] == expected["cloud_plan"]
+    assert output["ansible_plan"] == expected["ansible_plan"]
+
+
+@pytest.mark.parametrize("payload", ["not JSON", "```json\n{}\n```", "[]", "null"])
+def test_invalid_model_envelope_is_an_error_not_a_fallback(payload, architecture):
+    with pytest.raises(ValueError):
+        plan_with_rag(architecture, [], client=ModelClient(payload))
+
+
+def test_truncated_model_response_is_rejected_even_if_it_parses(architecture):
+    with pytest.raises(RuntimeError, match="truncated"):
+        plan_with_rag(architecture, [], client=ModelClient("{}", finish_reason="length"))
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"questions": ["Which IP address?"]},
+        {"cloud_plan": {}, "ansible_plan": [], "rule_ids": [], "limitations": []},
+        {
+            "cloud_plan": {},
+            "ansible_plan": {},
+            "rule_ids": [],
+            "limitations": [],
+            "questions": ["Confirm deployment?"],
+        },
+        {
+            "cloud_plan": {},
+            "ansible_plan": {},
+            "rule_ids": [],
+            "limitations": [],
+            "files": {"main.tf": "model-generated code"},
+        },
+    ],
+)
+def test_non_plan_model_objects_are_rejected(payload, architecture):
+    with pytest.raises(ValueError):
+        plan_with_rag(architecture, [], client=ModelClient(json.dumps(payload)))
+
+
+def test_model_transport_errors_are_not_hidden(retrieval, architecture):
+    class BrokenClient(ModelClient):
+        def create(self, **request):
+            raise RuntimeError("provider unavailable")
+
+    with pytest.raises(RuntimeError, match="provider unavailable"):
+        app.plan_architecture(architecture, client=BrokenClient("{}"), retriever=retrieval)
+
+
+def test_cli_context_is_json_and_requires_no_client(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(
+        app,
+        "KnowledgeRetriever",
+        lambda **kw: KnowledgeRetriever(index_dir=tmp_path / "index", **kw),
+    )
+    monkeypatch.setattr(app, "plan_with_rag", lambda *a, **kw: pytest.fail("unexpected model call"))
+    output = tmp_path / "result.json"
+    status = app.main(
+        [
+            "context",
+            "--input",
+            str(ROOT / "examples/architecture.json"),
+            "--retrieval",
+            "lexical",
+            "--output",
+            str(output),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert status == 0 and captured.err == ""
+    assert json.loads(captured.out) == json.loads(output.read_text())
+    assert "SVC-HTTP" in {r["rule_id"] for r in json.loads(captured.out)["knowledge"]}
+
+
+def test_cli_plan_writes_only_json_artifact(tmp_path, monkeypatch, capsys):
+    import sys
+
+    client = ModelClient(
+        '{"cloud_plan": {}, "ansible_plan": {"tasks": []}, "rule_ids": [], "limitations": []}'
+    )
+    monkeypatch.setitem(sys.modules, "groq", SimpleNamespace(Groq=lambda: client))
+    monkeypatch.setattr(
+        app,
+        "KnowledgeRetriever",
+        lambda **kw: KnowledgeRetriever(index_dir=tmp_path / "index", **kw),
+    )
+    output = tmp_path / "generated" / "plan.json"
+    status = app.main(
+        [
+            "plan",
+            "--input",
+            str(ROOT / "examples/architecture.json"),
+            "--retrieval",
+            "lexical",
+            "--output",
+            str(output),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert status == 0 and not captured.err
+    assert json.loads(captured.out) == json.loads(output.read_text())
+    assert list(output.parent.iterdir()) == [output]
+    assert len(client.calls) == 1
+
+
+@pytest.mark.parametrize("content", ["invalid", "[]"])
+def test_cli_bad_json_envelope_fails_cleanly(tmp_path, capsys, content):
+    path = tmp_path / "input.json"
+    path.write_text(content)
+    assert app.main(["plan", "--input", str(path)]) == (2 if content == "[]" else 1)
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    report = json.loads(captured.err)
+    assert report.get("error") or report.get("status") == "not_ready"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        None,
+        "",
+        '{"cloud_plan": {}, "ansible_plan": {}, "rule_ids": [], "limitations": [NaN]}',
+        '{"cloud_plan": {}, "cloud_plan": {}, "ansible_plan": {}, "rule_ids": [], "limitations": []}',
+    ],
+)
+def test_empty_or_ambiguous_provider_content_is_rejected(payload, architecture):
+    with pytest.raises(ValueError):
+        plan_with_rag(architecture, [], client=ModelClient(payload))
+
+
+@pytest.mark.parametrize("reason", [None, "content_filter", "tool_calls"])
+def test_non_completion_finish_reason_is_an_error(reason, architecture):
+    with pytest.raises(ValueError, match="did not complete"):
+        plan_with_rag(architecture, [], client=ModelClient("{}", finish_reason=reason))
+
+
+def test_provider_with_no_choices_has_a_clear_error(architecture):
+    class EmptyClient(ModelClient):
+        def create(self, **request):
+            return SimpleNamespace(choices=[])
+
+    with pytest.raises(ValueError, match="no completion"):
+        plan_with_rag(architecture, [], client=EmptyClient("{}"))
+
+
+def test_cli_cannot_overwrite_input(tmp_path, capsys):
+    path = tmp_path / "architecture.json"
+    original = '{"components": []}'
+    path.write_text(original, encoding="utf-8")
+    assert app.main(["context", "--input", str(path), "--output", str(path)]) == 1
+    assert path.read_text() == original
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "must differ" in json.loads(captured.err)["error"]
+
+
+def test_falsey_injected_retriever_is_still_used(architecture):
+    class InjectedRetriever:
+        def __bool__(self):
+            return False
+
+        def retrieve(self, architecture):
+            return []
+
+    client = ModelClient(
+        '{"cloud_plan": {}, "ansible_plan": {}, "rule_ids": [], "limitations": []}'
+    )
+    result = app.plan_architecture(architecture, retriever=InjectedRetriever(), client=client)
+    assert result["knowledge"] == []
+
+
+def test_cli_context_runs_outside_checkout_without_optional_dependencies(tmp_path):
+    environment = {
+        **os.environ,
+        "NET2TF_INDEX_DIR": str(tmp_path / "index"),
+        "NET2TF_KB_DIR": str(ROOT / "kb"),
+    }
+    output = tmp_path / "context.json"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-S",
+            str(ROOT / "app.py"),
+            "context",
+            "--retrieval",
+            "lexical",
+            "--input",
+            str(ROOT / "examples/architecture.json"),
+            "--output",
+            str(output),
+        ],
+        cwd=tmp_path,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert not result.stderr
+    context = json.loads(result.stdout)
+    assert context == json.loads(output.read_text(encoding="utf-8"))
+    assert {"OSPF-001", "SVC-HTTP", "AUTO-001"} <= {r["rule_id"] for r in context["knowledge"]}

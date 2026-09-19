@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from config import PLAN_MODEL, ROOT_DIR
+from config import PLAN_MAX_COMPLETION_TOKENS, PLAN_MODEL, ROOT_DIR, SUPPORTED_PLAN_MODELS
 from contracts import JSONObject, KnowledgeRecord
 from json_io import dumps_json, loads_json
 from readiness import require_ready
@@ -71,6 +71,12 @@ def plan_with_rag(
 ) -> JSONObject:
     """Translate a ready architecture without dialogue or topology overrides."""
     require_ready(architecture)
+    if PLAN_MODEL not in SUPPORTED_PLAN_MODELS:
+        raise ValueError(
+            "NET2TF_PLAN_MODEL must be one of "
+            + ", ".join(SUPPORTED_PLAN_MODELS)
+            + ". Use a Groq Free-plan account; other models are disabled."
+        )
     if client is None:
         try:
             from groq import Groq
@@ -78,25 +84,40 @@ def plan_with_rag(
             raise RuntimeError(
                 "Planning requires the groq package; install requirements.txt."
             ) from error
-        client = Groq()  # GROQ_API_KEY is supplied by the caller's environment.
+        # GROQ_API_KEY comes from the caller. Quota failures must not trigger retries.
+        client = Groq(max_retries=0)
 
     context = [
         {"rule_id": c["rule_id"], "source": c["source"], "heading": c["heading"], "text": c["text"]}
         for c in retrieved_chunks
     ]
-    response = client.chat.completions.create(
-        model=PLAN_MODEL,
-        temperature=0,
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": dumps_json(
-                    {"architecture": architecture, "knowledge": context},
-                    indent=2,
-                ),
-            },
-        ],
-    )
+    try:
+        response = client.chat.completions.create(
+            model=PLAN_MODEL,
+            temperature=0,
+            max_completion_tokens=PLAN_MAX_COMPLETION_TOKENS,
+            reasoning_effort="medium",
+            include_reasoning=False,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": dumps_json({"architecture": architecture, "knowledge": context}),
+                },
+            ],
+        )
+    except Exception as error:
+        if getattr(error, "status_code", None) == 429:
+            raise RuntimeError(
+                "Groq quota reached. Wait for the applicable limit to reset before retrying. "
+                "For a request exceeding the token limit, reduce its size. "
+                "No automatic retry or model fallback was attempted."
+            ) from error
+        if getattr(error, "status_code", None) == 413:
+            raise RuntimeError(
+                "The architecture and retrieved context exceed Groq's request limit. "
+                "Use a smaller lab or fewer retrieved records; no plan was generated."
+            ) from error
+        raise
     return _parse_plan(_response_content(response))

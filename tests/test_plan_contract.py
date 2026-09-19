@@ -11,6 +11,7 @@ from types import SimpleNamespace
 import pytest
 
 import app
+import planner
 from config import CORE_RULE_IDS
 from planner import plan_with_rag
 from retriever import KnowledgeRetriever
@@ -194,7 +195,12 @@ def test_cli_plan_writes_only_json_artifact(tmp_path, monkeypatch, capsys):
     client = ModelClient(
         '{"cloud_plan": {}, "ansible_plan": {"tasks": []}, "rule_ids": [], "limitations": []}'
     )
-    monkeypatch.setitem(sys.modules, "groq", SimpleNamespace(Groq=lambda: client))
+
+    def make_client(**options):
+        assert options == {"max_retries": 0}
+        return client
+
+    monkeypatch.setitem(sys.modules, "groq", SimpleNamespace(Groq=make_client))
     monkeypatch.setattr(
         app,
         "KnowledgeRetriever",
@@ -316,3 +322,72 @@ def test_cli_context_runs_outside_checkout_without_optional_dependencies(tmp_pat
     context = json.loads(result.stdout)
     assert context == json.loads(output.read_text(encoding="utf-8"))
     assert {"OSPF-001", "SVC-HTTP", "AUTO-001"} <= {r["rule_id"] for r in context["knowledge"]}
+
+
+@pytest.mark.parametrize("model", ["openai/gpt-oss-120b", "openai/gpt-oss-20b"])
+def test_gpt_oss_request_preserves_input_and_bounds_completion(model, architecture, monkeypatch):
+    monkeypatch.setattr(planner, "PLAN_MODEL", model)
+    client = ModelClient(
+        '{"cloud_plan": {}, "ansible_plan": {}, "rule_ids": [], "limitations": []}'
+    )
+    plan_with_rag(architecture, [], client=client)
+    (request,) = client.calls
+    assert request["model"] == model
+    assert request["max_completion_tokens"] == 4096
+    assert request["reasoning_effort"] == "medium"
+    assert request["include_reasoning"] is False
+    assert "reasoning_format" not in request
+    content = request["messages"][1]["content"]
+    assert json.loads(content) == {"architecture": architecture, "knowledge": []}
+    assert "\n" not in content
+
+
+@pytest.mark.parametrize("model", ["llama-3.3-70b-versatile", "unknown-model"])
+def test_unapproved_model_is_rejected_before_provider_call(model, architecture, monkeypatch):
+    monkeypatch.setattr(planner, "PLAN_MODEL", model)
+    client = ModelClient("{}")
+    with pytest.raises(ValueError, match="other models are disabled"):
+        plan_with_rag(architecture, [], client=client)
+    assert client.calls == []
+
+
+@pytest.mark.parametrize("status, message", [(429, "quota reached"), (413, "request limit")])
+def test_provider_limits_fail_once_and_preserve_existing_output(
+    status, message, tmp_path, monkeypatch, capsys
+):
+    attempts = []
+
+    class LimitedClient(ModelClient):
+        def create(self, **request):
+            attempts.append(request)
+            error = RuntimeError("provider limit")
+            error.status_code = status
+            raise error
+
+    monkeypatch.setitem(sys.modules, "groq", SimpleNamespace(Groq=lambda **kw: LimitedClient("{}")))
+    monkeypatch.setattr(
+        app,
+        "KnowledgeRetriever",
+        lambda **kw: KnowledgeRetriever(index_dir=tmp_path / "index", **kw),
+    )
+    output = tmp_path / "plan.json"
+    output.write_text('{"previous": true}\n')
+    assert (
+        app.main(
+            [
+                "plan",
+                "--input",
+                str(ROOT / "examples/architecture.json"),
+                "--retrieval",
+                "lexical",
+                "--output",
+                str(output),
+            ]
+        )
+        == 1
+    )
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert message in json.loads(captured.err)["error"]
+    assert output.read_text() == '{"previous": true}\n'
+    assert len(attempts) == 1

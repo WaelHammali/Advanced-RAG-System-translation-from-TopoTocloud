@@ -8,7 +8,10 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent
 KB_DIR = Path(os.environ.get("NET2TF_KB_DIR", ROOT_DIR / "kb"))
 INDEX_DIR = Path(os.environ.get("NET2TF_INDEX_DIR", ROOT_DIR / "index"))
-PLAN_MODEL = os.environ.get("NET2TF_PLAN_MODEL", "llama-3.3-70b-versatile")
+# Listed on Groq's Free plan; billing still depends on the caller's account tier.
+SUPPORTED_PLAN_MODELS = ("openai/gpt-oss-120b", "openai/gpt-oss-20b")
+PLAN_MODEL = os.environ.get("NET2TF_PLAN_MODEL", SUPPORTED_PLAN_MODELS[0])
+PLAN_MAX_COMPLETION_TOKENS = 4096
 EMBED_MODEL = os.environ.get("NET2TF_EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 RERANK_MODEL = os.environ.get("NET2TF_RERANK_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
 RETRIEVAL_BACKEND = os.environ.get("NET2TF_RETRIEVAL_BACKEND", "hybrid")

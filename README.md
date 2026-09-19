@@ -44,8 +44,31 @@ Use Python 3.10+ with compatible dependencies:
 ```bash
 python -m pip install -r requirements.txt
 export GROQ_API_KEY='your-key'
+export NET2TF_PLAN_MODEL='openai/gpt-oss-120b'
 python app.py plan --input examples/architecture.json --output generated/plan.json
 ```
+
+Use an API key from a **Groq Free-plan account** and keep that account on the Free
+plan to avoid API charges. The default model is `openai/gpt-oss-120b`; the supported
+alternative is `openai/gpt-oss-20b`. Other model IDs, including an old Llama override,
+are rejected before the provider call. Both supported models are listed on Groq's
+[Free-plan limits page](https://console.groq.com/docs/rate-limits), checked on
+2026-09-19. Model availability and quotas can change. The application cannot inspect
+your billing tier: the same model IDs incur charges on a paid account. See
+[Groq billing](https://console.groq.com/docs/billing-faqs).
+
+Planning makes one request with SDK retries disabled and no provider/model fallback.
+It sends JSON without indentation and caps completion at 4,096 tokens, including
+reasoning. Large plans can exceed this budget and are rejected if truncated.
+Quota and oversized-request errors stop translation without replacing an existing
+output file. Wait for quota reset or use a smaller lab/fewer retrieved records;
+free access does not mean unlimited requests or that every topology will fit.
+JSON object mode and local envelope checks remain in use; strict schema mode is
+not enabled, and model accuracy on the networking cases still needs live evaluation.
+
+Readiness checks, local retrieval, and artifact generation need no paid API.
+**Deploying generated Terraform to AWS can incur cloud charges.** Nothing is
+deployed by the RAG or either generator.
 
 Hybrid retrieval uses BM25, embeddings and a cross-encoder; its first use can
 download the configured models. Groq receives the supplied architecture and

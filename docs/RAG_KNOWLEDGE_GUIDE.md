@@ -69,6 +69,16 @@ implementation limitations. They prohibit field-validation reports, dialogue,
 code generation and execution. HTTP, OSPF and custom Ansible tasks are planned
 together on their actual component targets.
 
+The default is `openai/gpt-oss-120b`, with `openai/gpt-oss-20b` as the only supported
+override. Use a Groq Free-plan account to avoid API charges; the code cannot verify
+the account's billing tier. Requests use medium reasoning, exclude reasoning from
+the response, and cap completion (including reasoning) at 4,096 tokens. The input
+JSON is serialized without indentation to reduce token overhead without dropping
+source fields or retrieved rules. SDK retries are disabled; quota and request-size
+failures produce explicit errors with no automatic model/provider fallback.
+The current JSON object mode checks the envelope locally; this model change does
+not enable strict JSON Schema output or establish translation accuracy.
+
 The instructions live in `prompts/planner.txt`. Missing/empty completions,
 non-completion finish reasons, ambiguous JSON and malformed output envelopes fail
 explicitly; no guessed plan is substituted. `contracts.py` describes Python

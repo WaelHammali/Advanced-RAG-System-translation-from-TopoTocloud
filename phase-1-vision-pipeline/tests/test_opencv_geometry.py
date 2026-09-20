@@ -129,3 +129,8 @@ def test_short_slightly_tilted_fragment_merges_into_a_long_line():
     # segment, but the fragment itself lies within tol of the long line
     segs = [((138, 182), (402, 182)), ((339, 177), (402, 178)), ((142, 177), (172, 177))]
     assert len(merge_collinear(segs, **KW)) == 1
+
+
+def test_reading_order_treats_thin_horizontal_items_with_jitter_as_one_row():
+    cables = [("right", Rect(478, 178.2, 761, 178.6)), ("left", Rect(138, 179.9, 402, 180.1))]
+    assert reading_order_key(cables) == ["left", "right"]

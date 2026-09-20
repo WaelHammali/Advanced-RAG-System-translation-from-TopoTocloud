@@ -270,16 +270,19 @@ def rect_polyline_distance(r: Rect, segs: Sequence[Seg]) -> tuple[float, int]:
     return best, idx
 
 
-def reading_order_key(items: Sequence[tuple[str, Rect]], band_ratio: float = 0.5) -> list[str]:
+def reading_order_key(
+    items: Sequence[tuple[str, Rect]], band_ratio: float = 0.5, min_band_px: float = 8.0
+) -> list[str]:
     """Deterministic top-to-bottom, left-to-right ordering with row banding.
 
-    Items whose vertical centres are within ``band_ratio`` x the median height of each other
-    are treated as one row, so tiny vertical jitter never reorders a visual row.
+    Items whose vertical centres are within ``max(band_ratio x median height, min_band_px)``
+    of each other are one row, so small vertical jitter never reorders a visual row (the
+    floor matters for near-zero-height items such as horizontal cables).
     """
     if not items:
         return []
     heights = sorted(r.h for _, r in items)
-    band = max(1.0, heights[len(heights) // 2] * band_ratio)
+    band = max(min_band_px, heights[len(heights) // 2] * band_ratio)
     ordered = sorted(items, key=lambda it: (it[1].center[1], it[1].center[0], it[0]))
     rows: list[list[tuple[str, Rect]]] = []
     for it in ordered:

@@ -124,24 +124,6 @@
       "supports": "Instance-specific maximum network interfaces."
     },
     {
-      "id": "ANSIBLE-PACKAGE",
-      "url": "https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/package_module.html",
-      "title": "Ansible package module",
-      "supports": "Package installation intentions and parameters."
-    },
-    {
-      "id": "ANSIBLE-SERVICE",
-      "url": "https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/service_module.html",
-      "title": "Ansible service module",
-      "supports": "Service state and enabled settings."
-    },
-    {
-      "id": "ANSIBLE-TEMPLATE",
-      "url": "https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/template_module.html",
-      "title": "Ansible template module",
-      "supports": "Rendering downstream configuration files."
-    },
-    {
       "id": "NGINX-HTTP",
       "url": "https://nginx.org/en/docs/http/ngx_http_core_module.html",
       "title": "NGINX HTTP core module",

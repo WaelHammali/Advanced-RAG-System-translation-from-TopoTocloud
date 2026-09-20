@@ -16,7 +16,7 @@ from urllib.parse import unquote
 ROOT = Path(__file__).resolve().parents[1]
 KB = ROOT / "kb"
 MANIFEST = KB / "manifest.json"
-CORPUS_VERSION = "2.3.0"
+CORPUS_VERSION = "3.0.0"
 CORE = ["CORE-001", "CORE-002", "CORE-003"]
 FIELDS = {
     "Rule-ID",
@@ -36,14 +36,14 @@ FIELDS = {
 
 def actual_chunker():
     """Load only the repository's pure chunker, avoiding ML imports/downloads."""
-    config = ast.parse((ROOT / "config.py").read_text(encoding="utf-8"))
+    config = ast.parse((ROOT / "net2cloud/config.py").read_text(encoding="utf-8"))
     limit = next(
         ast.literal_eval(node.value)
         for node in config.body
         if isinstance(node, ast.Assign)
         and any(isinstance(t, ast.Name) and t.id == "MAX_CHARS_PER_CHUNK" for t in node.targets)
     )
-    source = ast.parse((ROOT / "retriever.py").read_text(encoding="utf-8"))
+    source = ast.parse((ROOT / "net2cloud/retriever.py").read_text(encoding="utf-8"))
     nodes = [
         node
         for node in source.body
@@ -54,7 +54,7 @@ def actual_chunker():
         raise ValueError("Cannot find the actual KBChunk and Markdown chunker")
     module = ast.Module(body=nodes, type_ignores=[])
     env = {"__name__": __name__, "dataclass": dataclass, "MAX_CHARS_PER_CHUNK": limit}
-    exec(compile(module, str(ROOT / "retriever.py"), "exec"), env)
+    exec(compile(module, str(ROOT / "net2cloud/retriever.py"), "exec"), env)
     return env["_chunk_markdown"], limit
 
 
@@ -64,7 +64,7 @@ def digest(content: bytes) -> str:
 
 def validate(refresh: bool) -> dict:
     errors = []
-    source_doc = json.loads((ROOT / "docs/sources.json").read_text())
+    source_doc = json.loads((ROOT / "kb/sources.json").read_text())
     sources = {item["id"] for item in source_doc["sources"]}
     if len(sources) != len(source_doc["sources"]):
         errors.append("Duplicate source IDs")
@@ -157,7 +157,11 @@ def validate(refresh: bool) -> dict:
 
     # Local file links in authored docs/README must resolve. Anchor semantics
     # and remote URLs are reviewed separately; this makes no network requests.
-    for path in [ROOT / "README.md", *sorted((ROOT / "docs").glob("*.md"))]:
+    for path in [
+        ROOT / "README.md",
+        ROOT / "CONTRIBUTING.md",
+        *sorted((ROOT / "docs").glob("*.md")),
+    ]:
         for target in re.findall(r"\[[^\]]*\]\(([^)]+)\)", path.read_text()):
             if "://" in target or target.startswith("#"):
                 continue
@@ -174,11 +178,15 @@ def validate(refresh: bool) -> dict:
         "status": "target_specification",
         "default_mode": "behavioral_lab",
         "reviewed_on": source_doc["reviewed_on"],
-        "specification": "docs/NETWORK_TRANSLATION_SPEC.md",
-        "source_register": "docs/sources.json",
+        "specification": "kb/rules/translation_contract.md",
+        "source_register": "kb/sources.json",
         "evaluation_cases": "evaluations/rag_cases.jsonl",
         "mandatory_context_ids": CORE,
-        "chunker": {"path": "retriever.py", "function": "_chunk_markdown", "max_characters": limit},
+        "chunker": {
+            "path": "net2cloud/retriever.py",
+            "function": "_chunk_markdown",
+            "max_characters": limit,
+        },
         "files": files,
         "records": records,
     }

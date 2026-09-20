@@ -26,16 +26,16 @@ Verify: Audit generated links, routes and protocols against input provenance.
 Sources: PROJECT
 Related: INPUT-001, STATIC-001
 
-## [CORE-003] Return only a JSON plan for a separate generator
+## [CORE-003] Return only an AWS architecture JSON plan
 Rule-ID: CORE-003
 Kind: rule
 Mode: all
 Status: target_specification
-Keywords: JSON, plan, generator, Ansible, Terraform, boundaries
-Applies: Every architecture JSON planning request.
-Required: Describe cloud mapping and Ansible task intentions with exact input targets and parameters. Preserve the source architecture. A separate generator renders files and resolves runtime references.
-Forbidden: The translation model emits no dialogue, field-validation report, executable code, deployment status or fabricated test results. Application readiness errors are a separate response before translation.
-Expected: One JSON plan with cloud_plan, ansible_plan, rule_ids and limitations. Backend dependencies describe requirements, not completed work.
-Verify: The application blocks incomplete identities, links and interface addresses; the downstream generator checks its capabilities and resulting artifacts.
+Keywords: AWS, JSON, cloud_plan, configuration, translation, boundaries
+Applies: Every architecture JSON translation request.
+Required: Return cloud_plan with provider aws, resource/component mappings, networking and declarative configuration requirements. Preserve source targets and parameters. The application attaches the original source and selected knowledge metadata.
+Forbidden: No deployment code, files, dialogue, validation reports or fabricated runtime results. Deterministic readiness errors are a separate response before translation.
+Expected: One JSON object with cloud_plan, rule_ids and limitations; architecture and knowledge are attached by the app. Dependencies describe requirements, not completed work.
+Verify: Check input completeness before retrieval and reject non-AWS output or extra top-level sections. A JSON plan does not establish live connectivity.
 Sources: PROJECT
-Related: VERIFY-001, TF-002
+Related: VERIFY-001, PLAN-002

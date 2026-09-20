@@ -52,4 +52,4 @@ Forbidden: Do not suppress setup errors or assume installed FRR means configured
 Expected: Readiness is separate from deployment and convergence; failed setup stops behavioral verification.
 Verify: Record versions/configuration checks, then inspect live protocol/routes.
 Sources: PROJECT, LINUX-SYSCTL
-Related: TF-002, RIP-001, OSPF-001
+Related: PLAN-002, RIP-001, OSPF-001

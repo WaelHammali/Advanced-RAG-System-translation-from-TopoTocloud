@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0",
-  "corpus_version": "2.3.0",
+  "corpus_version": "3.0.0",
   "status": "target_specification",
   "default_mode": "behavioral_lab",
   "reviewed_on": "2026-09-17",
-  "specification": "docs/NETWORK_TRANSLATION_SPEC.md",
-  "source_register": "docs/sources.json",
+  "specification": "kb/rules/translation_contract.md",
+  "source_register": "kb/sources.json",
   "evaluation_cases": "evaluations/rag_cases.jsonl",
   "mandatory_context_ids": [
     "CORE-001",
@@ -13,31 +13,11 @@
     "CORE-003"
   ],
   "chunker": {
-    "path": "retriever.py",
+    "path": "net2cloud/retriever.py",
     "function": "_chunk_markdown",
     "max_characters": 1800
   },
   "files": [
-    {
-      "path": "kb/access_patterns.md",
-      "sha256": "4cb7c4c54b54d01a58acb2fc0835420a99edde2884a09b2185260dc6dfc476f5"
-    },
-    {
-      "path": "kb/addressing_rules.md",
-      "sha256": "39a32b6b1110239b1eef10fa767dcd741cccd4ec21c81c5b2bc09b5f685e283d"
-    },
-    {
-      "path": "kb/ansible_operations.md",
-      "sha256": "861e14c2a8e2c97c20b48451684ef8cdee680998715a55bf64e1d1e28d5750ca"
-    },
-    {
-      "path": "kb/application_services.md",
-      "sha256": "62da062fd94f0e0f7a98c0db18073b095ae8907f3afa92334f255dca8d7ea239"
-    },
-    {
-      "path": "kb/aws_network_patterns.md",
-      "sha256": "0cf367153483f8f6f9fc944a35d46e82383b0a96c83eccfb2c57301d0f08f26f"
-    },
     {
       "path": "kb/examples/bastion.md",
       "sha256": "92b1fddfb3a5f1d12d2224dacf352731ad11e13f8619471a2a4e37bf41ec3699"
@@ -95,268 +75,79 @@
       "sha256": "8283a796b983e2208ab501c2aa5c3508afb67957ab6198346be31fff29b69a2e"
     },
     {
-      "path": "kb/input_contract.md",
-      "sha256": "846fbaf62a0b00b1d6390a2963fc199e17b4f6efe0826b787934c0da53334708"
+      "path": "kb/rules/access_patterns.md",
+      "sha256": "4cb7c4c54b54d01a58acb2fc0835420a99edde2884a09b2185260dc6dfc476f5"
     },
     {
-      "path": "kb/internet_patterns.md",
+      "path": "kb/rules/addressing_rules.md",
+      "sha256": "39a32b6b1110239b1eef10fa767dcd741cccd4ec21c81c5b2bc09b5f685e283d"
+    },
+    {
+      "path": "kb/rules/application_services.md",
+      "sha256": "42e13b2645c285b8f01a77c5422dbc6ce90154fa41195f70850769cce29c63c3"
+    },
+    {
+      "path": "kb/rules/aws_network_patterns.md",
+      "sha256": "0cf367153483f8f6f9fc944a35d46e82383b0a96c83eccfb2c57301d0f08f26f"
+    },
+    {
+      "path": "kb/rules/configuration_operations.md",
+      "sha256": "f809323286a8eb55a18ad5c4081653351d62b4e7639f96f6f8c761d7c4134837"
+    },
+    {
+      "path": "kb/rules/input_contract.md",
+      "sha256": "2725e7f6a56a3f4371a0fee7ee80ab94c189a3e5c8fbd87350ce59cd759732d2"
+    },
+    {
+      "path": "kb/rules/internet_patterns.md",
       "sha256": "518b45a307c1f3c87b9c4000c400c162a8f8df6b44c5af4b9b57c2c74342df22"
     },
     {
-      "path": "kb/layer2_patterns.md",
-      "sha256": "d09a2288341747c6aab9945b1eb520513526e4800eaeff1f19705bed9607069d"
+      "path": "kb/rules/layer2_patterns.md",
+      "sha256": "0717517fe1b223e9f5f28c00652cba818449fd58fb45d3319c5bd37884581bb7"
     },
     {
-      "path": "kb/mapping_rules.md",
+      "path": "kb/rules/mapping_rules.md",
       "sha256": "16ccb09f3ddbd750924c2c2dde8077447f9d87faf3654f94ab422a7449724283"
     },
     {
-      "path": "kb/real_router_appliance_rules.md",
-      "sha256": "bbd5c3abd870e2ac805b1db2b2e55879ccedf30e3d494a6886135a3c3bd2ee11"
+      "path": "kb/rules/plan_boundaries.md",
+      "sha256": "c3147d9b266b496ecc8e6c107301d58e2f658a130058fbb7f2c056db138853f4"
     },
     {
-      "path": "kb/routing_ospfv2.md",
+      "path": "kb/rules/real_router_appliance_rules.md",
+      "sha256": "13a6c79ad46704aa2cf7a0a8d4df4f1ece0ff57683b2ccb7efb095d4116fd176"
+    },
+    {
+      "path": "kb/rules/routing_ospfv2.md",
       "sha256": "72952ab8c43efaa4faa906ea7e9514866d08afcce465e4efa2c040913521aa4c"
     },
     {
-      "path": "kb/routing_ripv2.md",
+      "path": "kb/rules/routing_ripv2.md",
       "sha256": "79bcf3d7836b4f23bd1b1a5e0692bee5558562d0966d3e180de265228546b1be"
     },
     {
-      "path": "kb/routing_rules.md",
+      "path": "kb/rules/routing_rules.md",
       "sha256": "b7f1826e907e9d9e24bcb00a7a4c981ae243b769456f83069299d3ea2f70b51e"
     },
     {
-      "path": "kb/routing_static.md",
+      "path": "kb/rules/routing_static.md",
       "sha256": "8286264e143662699795fa2edaa4101251b7ff3ef4a8a2dcc8d099e277809160"
     },
     {
-      "path": "kb/security_patterns.md",
+      "path": "kb/rules/security_patterns.md",
       "sha256": "931bc5b0bcf7ad0523bcab88aadfcef3f49b7aa3f29d044cfaed5fc4306a8581"
     },
     {
-      "path": "kb/terraform_patterns.md",
-      "sha256": "43d2608b962563268f8a44e6f958c71f662bb40769a1ff74973e4dae50bd9659"
+      "path": "kb/rules/translation_contract.md",
+      "sha256": "9011061fd6492bcdbdb6831f8228a36a8c23b1d92369b01fda1f438cbb7b57a4"
     },
     {
-      "path": "kb/translation_contract.md",
-      "sha256": "5acaf7f4d3426c8776fedaaf345410ba2957f66b8a425522ab99542071bdf3d7"
-    },
-    {
-      "path": "kb/verification_rules.md",
+      "path": "kb/rules/verification_rules.md",
       "sha256": "c53aa939acda06f43da04a54ea75a1090fa9874367032838f00f6660db8bee7c"
     }
   ],
   "records": [
-    {
-      "id": "ACCESS-001",
-      "path": "kb/access_patterns.md",
-      "title": "Bastion access must not create lab shortcuts",
-      "kind": "rule",
-      "mode": "behavioral_lab",
-      "characters": 800,
-      "sha256": "6ff61b396bb6ccea787b7d00ce63f93673b8b60bbe7045e06bdd30d604185221",
-      "sources": [
-        "PROJECT",
-        "AWS-SG"
-      ],
-      "related": [
-        "EX-BASTION",
-        "BACKEND-003"
-      ]
-    },
-    {
-      "id": "ACCESS-002",
-      "path": "kb/access_patterns.md",
-      "title": "Management exposure must not rewrite lab LANs",
-      "kind": "rule",
-      "mode": "behavioral_lab",
-      "characters": 712,
-      "sha256": "88028d0b3a7a86a4c82b67e7a3cff4ac834f5222f35b8d9b96794dd4c4669b75",
-      "sources": [
-        "PROJECT"
-      ],
-      "related": [
-        "L2-001",
-        "NAT-001"
-      ]
-    },
-    {
-      "id": "ADDR-001",
-      "path": "kb/addressing_rules.md",
-      "title": "Preserve addresses and allocate only authorized missing values",
-      "kind": "rule",
-      "mode": "behavioral_lab",
-      "characters": 838,
-      "sha256": "65426e549aa7ea1315fff459ae2a7a1b7114be18c1ee78fb3e9f5c11261cb423",
-      "sources": [
-        "PROJECT",
-        "RFC-HOST"
-      ],
-      "related": [
-        "ADDR-002",
-        "CORE-002"
-      ]
-    },
-    {
-      "id": "ADDR-002",
-      "path": "kb/addressing_rules.md",
-      "title": "Separate lab prefixes from AWS transport prefixes",
-      "kind": "rule",
-      "mode": "behavioral_lab",
-      "characters": 796,
-      "sha256": "ecccf1e50c16ed47ed4bf1994c3d34a1a64f887a502dd0b6fddb005c0a4d6fb3",
-      "sources": [
-        "PROJECT",
-        "AWS-SUBNET"
-      ],
-      "related": [
-        "BACKEND-003",
-        "ADDR-001"
-      ]
-    },
-    {
-      "id": "AUTO-001",
-      "path": "kb/ansible_operations.md",
-      "title": "Plan explicit Ansible operations with target bindings",
-      "kind": "rule",
-      "mode": "all",
-      "characters": 1071,
-      "sha256": "1106001eac2404fc5e8daa3c81b90f7821f5f151e88b9c450c1919d23d566f83",
-      "sources": [
-        "PROJECT",
-        "ANSIBLE-PACKAGE",
-        "ANSIBLE-SERVICE",
-        "ANSIBLE-TEMPLATE"
-      ],
-      "related": [
-        "AUTO-002",
-        "INPUT-001",
-        "SVC-HTTP"
-      ]
-    },
-    {
-      "id": "AUTO-002",
-      "path": "kb/ansible_operations.md",
-      "title": "Resolve Ansible management connections at deployment time",
-      "kind": "rule",
-      "mode": "all",
-      "characters": 968,
-      "sha256": "920e43e8f46e7563c5f90b8f025c405e97af93b01fc2fe61011d30e0dc9cdc6b",
-      "sources": [
-        "PROJECT"
-      ],
-      "related": [
-        "AUTO-001",
-        "BACKEND-001",
-        "INPUT-001"
-      ]
-    },
-    {
-      "id": "SVC-HTTP",
-      "path": "kb/application_services.md",
-      "title": "Plan HTTP services on their specified components",
-      "kind": "rule",
-      "mode": "all",
-      "characters": 1022,
-      "sha256": "3fcfb67903878de0699207f14ed163c9f38cedaf557647137d0aeee7c3e00bc7",
-      "sources": [
-        "ANSIBLE-PACKAGE",
-        "ANSIBLE-SERVICE",
-        "NGINX-HTTP",
-        "PROJECT"
-      ],
-      "related": [
-        "AUTO-001",
-        "AUTO-002",
-        "CORE-001"
-      ]
-    },
-    {
-      "id": "SVC-HTTPS",
-      "path": "kb/application_services.md",
-      "title": "Preserve TLS configuration and secret references",
-      "kind": "rule",
-      "mode": "all",
-      "characters": 858,
-      "sha256": "873616076b1bed48fec1d6c604eec29ccb8d1811c02eaec1f61758ab070e35c4",
-      "sources": [
-        "PROJECT",
-        "ANSIBLE-SERVICE"
-      ],
-      "related": [
-        "SVC-HTTP",
-        "AUTO-001"
-      ]
-    },
-    {
-      "id": "AWS-001",
-      "path": "kb/aws_network_patterns.md",
-      "title": "AWS local routes do not establish router traversal",
-      "kind": "rule",
-      "mode": "all",
-      "characters": 716,
-      "sha256": "f18dbf2520e5fdd087866caeeec01ddc20728339f2563294c4bb8e5257f3befb",
-      "sources": [
-        "AWS-ROUTES",
-        "PROJECT"
-      ],
-      "related": [
-        "BACKEND-003",
-        "MAP-003"
-      ]
-    },
-    {
-      "id": "AWS-002",
-      "path": "kb/aws_network_patterns.md",
-      "title": "Peering carries transport without creating lab adjacency",
-      "kind": "rule",
-      "mode": "all",
-      "characters": 750,
-      "sha256": "70fa919c5dcf7efa9fe92285066c711ddae51a6bf8e19b1499df66bec7bcf8e2",
-      "sources": [
-        "AWS-PEERING",
-        "PROJECT"
-      ],
-      "related": [
-        "EX-PEERING",
-        "BACKEND-003"
-      ]
-    },
-    {
-      "id": "AWS-003",
-      "path": "kb/aws_network_patterns.md",
-      "title": "Transit Gateway must preserve lab isolation and paths",
-      "kind": "rule",
-      "mode": "all",
-      "characters": 761,
-      "sha256": "722ca1df81a2ad7d098b9c5ce4021d34d6f25a29d38ac62e6b15b238ba09d1a4",
-      "sources": [
-        "AWS-TGW",
-        "PROJECT"
-      ],
-      "related": [
-        "EX-TGW",
-        "EX-ISOLATED"
-      ]
-    },
-    {
-      "id": "AWS-004",
-      "path": "kb/aws_network_patterns.md",
-      "title": "Distinguish AWS ENI limits from virtual lab ports",
-      "kind": "rule",
-      "mode": "all",
-      "characters": 803,
-      "sha256": "ffd1f38b033e070247d5c4bc776045a6c606ccc0e661c555632b895b22da292e",
-      "sources": [
-        "AWS-ENI",
-        "PROJECT"
-      ],
-      "related": [
-        "BACKEND-001",
-        "CORE-003"
-      ]
-    },
     {
       "id": "EX-BASTION",
       "path": "kb/examples/bastion.md",
@@ -632,24 +423,227 @@
       ]
     },
     {
+      "id": "ACCESS-001",
+      "path": "kb/rules/access_patterns.md",
+      "title": "Bastion access must not create lab shortcuts",
+      "kind": "rule",
+      "mode": "behavioral_lab",
+      "characters": 800,
+      "sha256": "6ff61b396bb6ccea787b7d00ce63f93673b8b60bbe7045e06bdd30d604185221",
+      "sources": [
+        "PROJECT",
+        "AWS-SG"
+      ],
+      "related": [
+        "EX-BASTION",
+        "BACKEND-003"
+      ]
+    },
+    {
+      "id": "ACCESS-002",
+      "path": "kb/rules/access_patterns.md",
+      "title": "Management exposure must not rewrite lab LANs",
+      "kind": "rule",
+      "mode": "behavioral_lab",
+      "characters": 712,
+      "sha256": "88028d0b3a7a86a4c82b67e7a3cff4ac834f5222f35b8d9b96794dd4c4669b75",
+      "sources": [
+        "PROJECT"
+      ],
+      "related": [
+        "L2-001",
+        "NAT-001"
+      ]
+    },
+    {
+      "id": "ADDR-001",
+      "path": "kb/rules/addressing_rules.md",
+      "title": "Preserve addresses and allocate only authorized missing values",
+      "kind": "rule",
+      "mode": "behavioral_lab",
+      "characters": 838,
+      "sha256": "65426e549aa7ea1315fff459ae2a7a1b7114be18c1ee78fb3e9f5c11261cb423",
+      "sources": [
+        "PROJECT",
+        "RFC-HOST"
+      ],
+      "related": [
+        "ADDR-002",
+        "CORE-002"
+      ]
+    },
+    {
+      "id": "ADDR-002",
+      "path": "kb/rules/addressing_rules.md",
+      "title": "Separate lab prefixes from AWS transport prefixes",
+      "kind": "rule",
+      "mode": "behavioral_lab",
+      "characters": 796,
+      "sha256": "ecccf1e50c16ed47ed4bf1994c3d34a1a64f887a502dd0b6fddb005c0a4d6fb3",
+      "sources": [
+        "PROJECT",
+        "AWS-SUBNET"
+      ],
+      "related": [
+        "BACKEND-003",
+        "ADDR-001"
+      ]
+    },
+    {
+      "id": "SVC-HTTP",
+      "path": "kb/rules/application_services.md",
+      "title": "Plan HTTP services on their specified components",
+      "kind": "rule",
+      "mode": "all",
+      "characters": 982,
+      "sha256": "37563008fe1391c5b1fab0c9a2eeb7f3e677532d5545c55d4a2f9a186ab5cdfc",
+      "sources": [
+        "NGINX-HTTP",
+        "PROJECT"
+      ],
+      "related": [
+        "AUTO-001",
+        "AUTO-002",
+        "CORE-001"
+      ]
+    },
+    {
+      "id": "SVC-HTTPS",
+      "path": "kb/rules/application_services.md",
+      "title": "Preserve TLS configuration and secret references",
+      "kind": "rule",
+      "mode": "all",
+      "characters": 846,
+      "sha256": "d006aeec43c47c5bd3d330e67fe6f52d4f7b6714b290b678af2002a9db9b2317",
+      "sources": [
+        "PROJECT"
+      ],
+      "related": [
+        "SVC-HTTP",
+        "AUTO-001"
+      ]
+    },
+    {
+      "id": "AWS-001",
+      "path": "kb/rules/aws_network_patterns.md",
+      "title": "AWS local routes do not establish router traversal",
+      "kind": "rule",
+      "mode": "all",
+      "characters": 716,
+      "sha256": "f18dbf2520e5fdd087866caeeec01ddc20728339f2563294c4bb8e5257f3befb",
+      "sources": [
+        "AWS-ROUTES",
+        "PROJECT"
+      ],
+      "related": [
+        "BACKEND-003",
+        "MAP-003"
+      ]
+    },
+    {
+      "id": "AWS-002",
+      "path": "kb/rules/aws_network_patterns.md",
+      "title": "Peering carries transport without creating lab adjacency",
+      "kind": "rule",
+      "mode": "all",
+      "characters": 750,
+      "sha256": "70fa919c5dcf7efa9fe92285066c711ddae51a6bf8e19b1499df66bec7bcf8e2",
+      "sources": [
+        "AWS-PEERING",
+        "PROJECT"
+      ],
+      "related": [
+        "EX-PEERING",
+        "BACKEND-003"
+      ]
+    },
+    {
+      "id": "AWS-003",
+      "path": "kb/rules/aws_network_patterns.md",
+      "title": "Transit Gateway must preserve lab isolation and paths",
+      "kind": "rule",
+      "mode": "all",
+      "characters": 761,
+      "sha256": "722ca1df81a2ad7d098b9c5ce4021d34d6f25a29d38ac62e6b15b238ba09d1a4",
+      "sources": [
+        "AWS-TGW",
+        "PROJECT"
+      ],
+      "related": [
+        "EX-TGW",
+        "EX-ISOLATED"
+      ]
+    },
+    {
+      "id": "AWS-004",
+      "path": "kb/rules/aws_network_patterns.md",
+      "title": "Distinguish AWS ENI limits from virtual lab ports",
+      "kind": "rule",
+      "mode": "all",
+      "characters": 803,
+      "sha256": "ffd1f38b033e070247d5c4bc776045a6c606ccc0e661c555632b895b22da292e",
+      "sources": [
+        "AWS-ENI",
+        "PROJECT"
+      ],
+      "related": [
+        "BACKEND-001",
+        "CORE-003"
+      ]
+    },
+    {
+      "id": "AUTO-001",
+      "path": "kb/rules/configuration_operations.md",
+      "title": "Preserve declarative configuration operations and target bindings",
+      "kind": "rule",
+      "mode": "all",
+      "characters": 958,
+      "sha256": "affdf73112c273ee2d88edf12ee7fc5fbbb119e784c5ef0b6a16c5911fadb09e",
+      "sources": [
+        "PROJECT"
+      ],
+      "related": [
+        "AUTO-002",
+        "INPUT-001",
+        "SVC-HTTP"
+      ]
+    },
+    {
+      "id": "AUTO-002",
+      "path": "kb/rules/configuration_operations.md",
+      "title": "Keep management access symbolic and separate from lab traffic",
+      "kind": "rule",
+      "mode": "all",
+      "characters": 908,
+      "sha256": "38e793ca7c3205907f4e5e933f7e49efbb5a0a48f67370c5f32b4c5bf99f7ac6",
+      "sources": [
+        "PROJECT"
+      ],
+      "related": [
+        "AUTO-001",
+        "BACKEND-001",
+        "INPUT-001"
+      ]
+    },
+    {
       "id": "INPUT-001",
-      "path": "kb/input_contract.md",
+      "path": "kb/rules/input_contract.md",
       "title": "Consume architecture JSON without losing configuration",
       "kind": "rule",
       "mode": "all",
-      "characters": 1055,
-      "sha256": "ac8c15ca6c6b277f2d3863cfa1c274c923bc50beb0a16b6b21d3c160d61b3f4b",
+      "characters": 1068,
+      "sha256": "3401ba4963e844f1378b0114084ada9aa42e03959b18a44776380696e14eb80f",
       "sources": [
         "PROJECT"
       ],
       "related": [
         "CORE-002",
-        "TF-001"
+        "PLAN-001"
       ]
     },
     {
       "id": "NAT-001",
-      "path": "kb/internet_patterns.md",
+      "path": "kb/rules/internet_patterns.md",
       "title": "Internet requires an explicit lab egress design",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -665,7 +659,7 @@
     },
     {
       "id": "NAT-002",
-      "path": "kb/internet_patterns.md",
+      "path": "kb/rules/internet_patterns.md",
       "title": "Complete the chosen private-workload NAT infrastructure",
       "kind": "rule",
       "mode": "all",
@@ -681,7 +675,7 @@
     },
     {
       "id": "L2-001",
-      "path": "kb/layer2_patterns.md",
+      "path": "kb/rules/layer2_patterns.md",
       "title": "Same VLAN and subnet permit local ping without a router",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -698,7 +692,7 @@
     },
     {
       "id": "L2-002",
-      "path": "kb/layer2_patterns.md",
+      "path": "kb/rules/layer2_patterns.md",
       "title": "VLAN and IP boundaries must both be modeled",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -715,12 +709,12 @@
     },
     {
       "id": "L2-003",
-      "path": "kb/layer2_patterns.md",
+      "path": "kb/rules/layer2_patterns.md",
       "title": "Preserve switch ports and switching paths",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 849,
-      "sha256": "d21d19f21ef74af54f2790e71438bd7bbfa67f4fb2389f994fc51eda2f5e6ab4",
+      "characters": 867,
+      "sha256": "a1374d874ed313981bb51bc32d204e03db8204edf6250a38db55d12581b6f455",
       "sources": [
         "PROJECT",
         "LINUX-BRIDGE"
@@ -732,7 +726,7 @@
     },
     {
       "id": "MAP-001",
-      "path": "kb/mapping_rules.md",
+      "path": "kb/rules/mapping_rules.md",
       "title": "Map source devices to behavioral roles",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -750,7 +744,7 @@
     },
     {
       "id": "MAP-002",
-      "path": "kb/mapping_rules.md",
+      "path": "kb/rules/mapping_rules.md",
       "title": "Preserve exact links and disconnected components",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -767,7 +761,7 @@
     },
     {
       "id": "MAP-003",
-      "path": "kb/mapping_rules.md",
+      "path": "kb/rules/mapping_rules.md",
       "title": "Declare behavioral lab or cloud-native migration mode",
       "kind": "rule",
       "mode": "all",
@@ -783,8 +777,40 @@
       ]
     },
     {
+      "id": "PLAN-001",
+      "path": "kb/rules/plan_boundaries.md",
+      "title": "Keep AWS hosting and source network configuration in one plan",
+      "kind": "rule",
+      "mode": "behavioral_lab",
+      "characters": 1005,
+      "sha256": "f3d523e6d7b37ada3c0e1d3fe75dd7a03fa18beb6b4dffb27833f8cdc277560b",
+      "sources": [
+        "PROJECT"
+      ],
+      "related": [
+        "INPUT-001",
+        "PLAN-002"
+      ]
+    },
+    {
+      "id": "PLAN-002",
+      "path": "kb/rules/plan_boundaries.md",
+      "title": "A plan is not deployment or behavioral verification",
+      "kind": "rule",
+      "mode": "all",
+      "characters": 848,
+      "sha256": "ede7adf0f8e430d6bbfdb77a1c50d411e224c52fb6c015837ef22f30c7752029",
+      "sources": [
+        "PROJECT"
+      ],
+      "related": [
+        "CORE-003",
+        "VERIFY-001"
+      ]
+    },
+    {
       "id": "BACKEND-001",
-      "path": "kb/real_router_appliance_rules.md",
+      "path": "kb/rules/real_router_appliance_rules.md",
       "title": "Isolate every lab device's forwarding stack",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -801,7 +827,7 @@
     },
     {
       "id": "BACKEND-002",
-      "path": "kb/real_router_appliance_rules.md",
+      "path": "kb/rules/real_router_appliance_rules.md",
       "title": "Realize each cable and switch port explicitly",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -820,7 +846,7 @@
     },
     {
       "id": "BACKEND-003",
-      "path": "kb/real_router_appliance_rules.md",
+      "path": "kb/rules/real_router_appliance_rules.md",
       "title": "Prevent transport and management forwarding bypass",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -838,25 +864,25 @@
     },
     {
       "id": "BACKEND-004",
-      "path": "kb/real_router_appliance_rules.md",
+      "path": "kb/rules/real_router_appliance_rules.md",
       "title": "Verify router software and configuration readiness",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 765,
-      "sha256": "998846c54fdc3723416abe448006a90921bfc218f81d64d79962df60352475e4",
+      "characters": 767,
+      "sha256": "6c454f61560a6ec3ed0ff26ebec260b9e4eac9016dedfcbead56fb6e4704ff77",
       "sources": [
         "PROJECT",
         "LINUX-SYSCTL"
       ],
       "related": [
-        "TF-002",
+        "PLAN-002",
         "RIP-001",
         "OSPF-001"
       ]
     },
     {
       "id": "OSPF-001",
-      "path": "kb/routing_ospfv2.md",
+      "path": "kb/rules/routing_ospfv2.md",
       "title": "Derive OSPFv2 configuration from interfaces and topology",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -874,7 +900,7 @@
     },
     {
       "id": "OSPF-002",
-      "path": "kb/routing_ospfv2.md",
+      "path": "kb/rules/routing_ospfv2.md",
       "title": "Validate OSPF neighbors according to network type",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -891,7 +917,7 @@
     },
     {
       "id": "OSPF-003",
-      "path": "kb/routing_ospfv2.md",
+      "path": "kb/rules/routing_ospfv2.md",
       "title": "Preserve OSPF mismatches and missing advertisements",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -908,7 +934,7 @@
     },
     {
       "id": "RIP-001",
-      "path": "kb/routing_ripv2.md",
+      "path": "kb/rules/routing_ripv2.md",
       "title": "Configure RIPv2 on actual lab links",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -926,7 +952,7 @@
     },
     {
       "id": "RIP-002",
-      "path": "kb/routing_ripv2.md",
+      "path": "kb/rules/routing_ripv2.md",
       "title": "Check RIP updates and convergence",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -943,7 +969,7 @@
     },
     {
       "id": "ROUTE-001",
-      "path": "kb/routing_rules.md",
+      "path": "kb/rules/routing_rules.md",
       "title": "Connected networks need forwarding without a dynamic protocol",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -960,7 +986,7 @@
     },
     {
       "id": "ROUTE-002",
-      "path": "kb/routing_rules.md",
+      "path": "kb/rules/routing_rules.md",
       "title": "Evaluate selected routes in both directions",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -977,7 +1003,7 @@
     },
     {
       "id": "STATIC-001",
-      "path": "kb/routing_static.md",
+      "path": "kb/rules/routing_static.md",
       "title": "Static remote routing requires a usable return path",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -995,7 +1021,7 @@
     },
     {
       "id": "STATIC-002",
-      "path": "kb/routing_static.md",
+      "path": "kb/rules/routing_static.md",
       "title": "Keep unavailable or invalid static next hops visible",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -1012,7 +1038,7 @@
     },
     {
       "id": "SEC-001",
-      "path": "kb/security_patterns.md",
+      "path": "kb/rules/security_patterns.md",
       "title": "Preserve firewall placement and policy semantics",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -1029,7 +1055,7 @@
     },
     {
       "id": "SEC-002",
-      "path": "kb/security_patterns.md",
+      "path": "kb/rules/security_patterns.md",
       "title": "Separate outer transport security from inner lab security",
       "kind": "rule",
       "mode": "all",
@@ -1047,7 +1073,7 @@
     },
     {
       "id": "SEC-003",
-      "path": "kb/security_patterns.md",
+      "path": "kb/rules/security_patterns.md",
       "title": "Ping and routing-protocol permissions are separate",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -1064,40 +1090,8 @@
       ]
     },
     {
-      "id": "TF-001",
-      "path": "kb/terraform_patterns.md",
-      "title": "Plan transport and lab configuration for one downstream generator",
-      "kind": "rule",
-      "mode": "behavioral_lab",
-      "characters": 921,
-      "sha256": "b1081fdbb81ced766c7cc3afe90311d13a10adf58c31e869f81ab00b0d737f07",
-      "sources": [
-        "PROJECT"
-      ],
-      "related": [
-        "INPUT-001",
-        "TF-002"
-      ]
-    },
-    {
-      "id": "TF-002",
-      "path": "kb/terraform_patterns.md",
-      "title": "Deployment success differs from behavioral verification",
-      "kind": "rule",
-      "mode": "behavioral_lab",
-      "characters": 742,
-      "sha256": "01f85dc2b37ebc521cb268b1d0d6c7949f5263b3499890917138814bbc9371d5",
-      "sources": [
-        "PROJECT"
-      ],
-      "related": [
-        "CORE-003",
-        "VERIFY-001"
-      ]
-    },
-    {
       "id": "CORE-001",
-      "path": "kb/translation_contract.md",
+      "path": "kb/rules/translation_contract.md",
       "title": "Preserve network behavior and intentional failures",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -1114,7 +1108,7 @@
     },
     {
       "id": "CORE-002",
-      "path": "kb/translation_contract.md",
+      "path": "kb/rules/translation_contract.md",
       "title": "Unspecified configuration differs from explicitly absent configuration",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -1130,23 +1124,23 @@
     },
     {
       "id": "CORE-003",
-      "path": "kb/translation_contract.md",
-      "title": "Return only a JSON plan for a separate generator",
+      "path": "kb/rules/translation_contract.md",
+      "title": "Return only an AWS architecture JSON plan",
       "kind": "rule",
       "mode": "all",
-      "characters": 1011,
-      "sha256": "c10092f51b4bcf8bdaeac97496d88a2a453e9d4d295fb1353a1d0e323cd19236",
+      "characters": 1050,
+      "sha256": "856ee269ed89cc0e95922bb5ec044db6fef7eda29a3b68524c84ad77c8338f41",
       "sources": [
         "PROJECT"
       ],
       "related": [
         "VERIFY-001",
-        "TF-002"
+        "PLAN-002"
       ]
     },
     {
       "id": "VERIFY-001",
-      "path": "kb/verification_rules.md",
+      "path": "kb/rules/verification_rules.md",
       "title": "Separate prediction, observation and conformance",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -1162,7 +1156,7 @@
     },
     {
       "id": "VERIFY-002",
-      "path": "kb/verification_rules.md",
+      "path": "kb/rules/verification_rules.md",
       "title": "Prove packet paths and fault behavior",
       "kind": "rule",
       "mode": "behavioral_lab",
@@ -1179,7 +1173,7 @@
     },
     {
       "id": "VERIFY-003",
-      "path": "kb/verification_rules.md",
+      "path": "kb/rules/verification_rules.md",
       "title": "Check convergence and effective tunnel MTU",
       "kind": "rule",
       "mode": "behavioral_lab",

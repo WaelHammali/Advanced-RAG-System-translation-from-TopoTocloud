@@ -33,7 +33,7 @@ Mode: behavioral_lab
 Status: target_specification
 Keywords: switch chain, bridge, trunk, STP, loop
 Applies: Several switches/links form a source LAN.
-Required: Realize bridge nodes with declared links/VLANs and port-down behavior. Require a validated STP/loop-control capability when requested; the current educational generator rejects active switch/VLAN cycles because STP is disabled.
+Required: Realize bridge nodes with declared links/VLANs and port-down behavior. Describe required STP/loop-control capabilities explicitly. If an active switch/VLAN cycle has no supported loop control, report that limitation; never assume STP is enabled.
 Forbidden: Do not universally allocate one subnet per switch or flatten switch chains while claiming identical faults.
 Expected: Hosts can share an L2 domain across multiple switches; traffic follows the active switching path.
 Verify: Test port failures/VLAN boundaries and report unsupported vendor switching features.

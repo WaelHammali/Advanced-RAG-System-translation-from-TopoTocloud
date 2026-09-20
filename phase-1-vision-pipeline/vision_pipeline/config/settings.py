@@ -115,6 +115,9 @@ class Settings:
     output_dir: str = str(DEFAULT_OUTPUT_DIR)
     #: optional regex overriding the built-in device-name pattern
     device_name_pattern: str | None = None
+    #: model class -> type name used in the minimal RAG file (topology.simple.json) only.
+    #: topology.json keeps the model's own class name.
+    device_type_aliases: dict[str, str] = field(default_factory=lambda: {"desktop": "pc"})
 
     # ---------------------------------------------------------------------- loading
     @classmethod

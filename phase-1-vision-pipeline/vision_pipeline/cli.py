@@ -4,7 +4,7 @@
     python -m vision_pipeline yolo   --image diagram.png            -> raw_yolo.json
     python -m vision_pipeline ocr    --image diagram.png            -> raw_ocr.json
     python -m vision_pipeline opencv --image diagram.png [--raw-yolo F --raw-ocr F] -> raw_opencv.json
-    python -m vision_pipeline fuse   [--raw-yolo F --raw-ocr F --raw-opencv F]      -> fusion.json + topology.json
+    python -m vision_pipeline fuse   [--raw-yolo F --raw-ocr F --raw-opencv F]      -> fusion.json + topology.json + topology.simple.json
     python -m vision_pipeline print-config
 
 ``run`` is the default sub-command, so ``python -m vision_pipeline --image diagram.png`` works.
@@ -128,6 +128,7 @@ def _dispatch(args: argparse.Namespace, settings: Settings) -> int:
             args.raw_opencv or paths.raw_opencv,
             paths.fusion,
             paths.topology,
+            paths.topology_simple,
         )
     return 0
 

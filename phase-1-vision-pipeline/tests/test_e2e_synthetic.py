@@ -23,7 +23,7 @@ def test_full_pipeline_writes_all_five_files_and_reconstructs_the_network(tmp_pa
     out = tmp_path / "outputs"
     topo = Pipeline(Settings(), yolo_detector=fy, ocr_detector=fo).run(path, out)
 
-    for name in ("raw_yolo", "raw_ocr", "raw_opencv", "fusion", "topology"):
+    for name in ("raw_yolo", "raw_ocr", "raw_opencv", "fusion", "topology", "topology.simple"):
         assert (out / f"{name}.json").is_file(), name
     assert json.loads((out / "topology.json").read_text()) == json.loads(json.dumps(topo))
 
@@ -57,8 +57,11 @@ def test_fuse_subcommand_rebuilds_topology_from_the_raw_files(tmp_path):
     first = Pipeline(Settings(), yolo_detector=fy, ocr_detector=fo).run(path, out)
     (out / "topology.json").unlink()
     (out / "fusion.json").unlink()
+    simple_before = (out / "topology.simple.json").read_text()
+    (out / "topology.simple.json").unlink()
     assert main(["fuse", "--output-dir", str(out)]) == 0
     assert json.loads((out / "topology.json").read_text()) == json.loads(json.dumps(first))
+    assert (out / "topology.simple.json").read_text() == simple_before
 
 
 def test_fusion_json_is_traceable(tmp_path):
@@ -124,6 +127,7 @@ def test_outputs_validate_against_the_json_schemas(tmp_path):
         ("raw_ocr", "raw_ocr"),
         ("raw_opencv", "raw_opencv"),
         ("topology", "topology"),
+        ("topology.simple", "topology_simple"),
     ):
         jsonschema.validate(
             json.loads((out / f"{raw}.json").read_text()),

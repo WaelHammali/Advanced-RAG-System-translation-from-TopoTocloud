@@ -72,6 +72,21 @@ Differences from the sketch in the task, all deliberate:
 * `unresolved` holds only network-relevant leftovers (names, addresses, masks, suffixes, network labels, rejected link candidates).
   Unclassified text ("Figure 1") is kept in `fusion.json` only.
 
+### topology.simple.json (the RAG input)
+
+Written by `TopologyBuilder.build_simple()` from `topology.json` - a projection, nothing is added:
+```
+{ "devices": [ {"id": "device_1", "type": "router", "name": "R1",
+                "network": {"ip_address", "prefix_length", "subnet_mask", "network_address"}} ],
+  "links":   [ {"id": "link_1", "source": "device_1", "target": "device_2" | null,
+                "network": {"network_address", "prefix_length", "subnet_mask"}} ] }
+```
+* ids drop the zero padding (`device_001` -> `device_1`); links reference the shortened device ids.
+* `type` goes through `device_type_aliases` (default `{"desktop": "pc"}`), applied here only; `topology.json` keeps the model's class name.
+* No `host_suffix`, confidence, provenance, flags or `unresolved`.
+* A device with zero or several addresses has an all-null `network` (the minimal form cannot hold several; `topology.json` `addresses[]` keeps them all).
+* Schema: `schemas/json/topology_simple.schema.json`.
+
 ## 3. OCR semantic classification (`ocr/semantic_parser.py`)
 
 Text is NFKC-normalised, trimmed, whitespace-collapsed (the original is kept in `raw_text`). Then, first match wins:

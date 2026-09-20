@@ -26,7 +26,7 @@ from .topology.topology_builder import TopologyBuilder
 log = logging.getLogger("vision_pipeline")
 
 RAW_YOLO, RAW_OCR, RAW_OPENCV = "raw_yolo.json", "raw_ocr.json", "raw_opencv.json"
-FUSION, TOPOLOGY = "fusion.json", "topology.json"
+FUSION, TOPOLOGY, TOPOLOGY_SIMPLE = "fusion.json", "topology.json", "topology.simple.json"
 
 
 @dataclass
@@ -36,11 +36,14 @@ class PipelinePaths:
     raw_opencv: Path
     fusion: Path
     topology: Path
+    topology_simple: Path
 
 
 def output_paths(out_dir: str | Path) -> PipelinePaths:
     d = Path(out_dir)
-    return PipelinePaths(d / RAW_YOLO, d / RAW_OCR, d / RAW_OPENCV, d / FUSION, d / TOPOLOGY)
+    return PipelinePaths(
+        d / RAW_YOLO, d / RAW_OCR, d / RAW_OPENCV, d / FUSION, d / TOPOLOGY, d / TOPOLOGY_SIMPLE
+    )
 
 
 class Pipeline:
@@ -121,8 +124,12 @@ class Pipeline:
         raw_opencv: str | Path,
         fusion_out: str | Path,
         topology_out: str | Path,
+        topology_simple_out: str | Path | None = None,
     ) -> dict[str, Any]:
-        """Fusion + Topology Builder from the three raw JSON files (the standard contract)."""
+        """Fusion + Topology Builder from the three raw JSON files (the standard contract).
+
+        Writes topology.json (rich, stored) and topology.simple.json (minimal form for the RAG).
+        Returns the rich topology."""
         yolo = RawYolo.from_dict(read_json(raw_yolo))
         ocr = RawOcr.from_dict(read_json(raw_ocr))
         cv = RawOpenCV.from_dict(read_json(raw_opencv))
@@ -134,13 +141,16 @@ class Pipeline:
         result = engine.run(yolo, ocr, cv)
         fusion_doc = result.to_document()
         write_json(fusion_out, fusion_doc)
-        builder = TopologyBuilder()
+        builder = TopologyBuilder(self.settings.device_type_aliases)
         topology = builder.build(fusion_doc)  # the ONLY place topology.json is created
         builder.write(topology, topology_out)
+        simple_out = topology_simple_out or Path(topology_out).with_name(TOPOLOGY_SIMPLE)
+        builder.write_simple(builder.build_simple(topology), simple_out)  # what the RAG receives
         log.info(
-            "Fusion -> %s ; Topology -> %s (%d devices, %d links, %d unresolved)",
+            "Fusion -> %s ; Topology -> %s ; RAG input -> %s (%d devices, %d links, %d unresolved)",
             fusion_out,
             topology_out,
+            simple_out,
             len(topology["devices"]),
             len(topology["links"]),
             len(topology["unresolved"]),
@@ -156,5 +166,10 @@ class Pipeline:
         raw_ocr = self.run_ocr(image_path, paths.raw_ocr)
         self.run_opencv(image_path, paths.raw_opencv, raw_yolo, raw_ocr)
         return self.fuse(
-            paths.raw_yolo, paths.raw_ocr, paths.raw_opencv, paths.fusion, paths.topology
+            paths.raw_yolo,
+            paths.raw_ocr,
+            paths.raw_opencv,
+            paths.fusion,
+            paths.topology,
+            paths.topology_simple,
         )

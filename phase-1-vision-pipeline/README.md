@@ -7,6 +7,9 @@ No RAG, LangGraph, LLM, Terraform or Ansible in this phase. The guiding rule:
 
 > A partially empty but correct `topology.json` is better than a complete one containing guessed data.
 
+**Two outputs:** `topology.json` is the rich canonical file (confidence, provenance, all addresses, `unresolved`) and is stored.
+`topology.simple.json` is the minimal `{devices, links}` form and is **the only file handed to the RAG**; it is a pure projection of `topology.json`.
+
 Anything not detected, ambiguous, or below a confidence threshold is `null` (scalars) or `[]`
 (collections) and the evidence is preserved under `unresolved`.
 
@@ -21,7 +24,7 @@ cp /path/to/your/weights.pt models/yolo/best.pt            # <- YOUR YOLO WEIGHT
 ## Run
 
 ```bash
-# whole pipeline on one image -> outputs/{raw_yolo,raw_ocr,raw_opencv,fusion,topology}.json
+# whole pipeline on one image -> outputs/{raw_yolo,raw_ocr,raw_opencv,fusion,topology,topology.simple}.json
 python -m vision_pipeline run --image path/to/diagram.png
 python -m vision_pipeline run --image d.png --weights /other/best.pt --output-dir out/ --config my.yaml
 
@@ -29,7 +32,7 @@ python -m vision_pipeline run --image d.png --weights /other/best.pt --output-di
 python -m vision_pipeline yolo   --image d.png
 python -m vision_pipeline ocr    --image d.png
 python -m vision_pipeline opencv --image d.png --raw-yolo outputs/raw_yolo.json --raw-ocr outputs/raw_ocr.json
-python -m vision_pipeline fuse                      # raw_*.json -> fusion.json + topology.json
+python -m vision_pipeline fuse                      # raw_*.json -> fusion.json + topology.json + topology.simple.json
 
 python -m vision_pipeline print-config              # every setting and threshold, as JSON
 python -m examples.synthetic_demo                   # no weights needed: real OpenCV+fusion on a drawn diagram

@@ -11,6 +11,7 @@ It reshapes and *validates*; it never adds information. Every violated invariant
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -30,7 +31,20 @@ class TopologyValidationError(ValueError):
     pass
 
 
+_ID_RE = re.compile(r"^(?P<prefix>[A-Za-z]+)_0*(?P<num>\d+)$")
+SIMPLE_NETWORK_KEYS = ("ip_address", "prefix_length", "subnet_mask", "network_address")
+
+
+def _short_id(ident: str) -> str:
+    """``device_001`` -> ``device_1`` (ids that do not follow the pattern are kept)."""
+    m = _ID_RE.match(ident)
+    return f"{m['prefix']}_{int(m['num'])}" if m else ident
+
+
 class TopologyBuilder:
+    def __init__(self, type_aliases: dict[str, str] | None = None) -> None:
+        self.type_aliases = dict(type_aliases or {})
+
     def build(self, fusion: dict[str, Any]) -> dict[str, Any]:
         graph = fusion.get("graph")
         if graph is None:
@@ -62,6 +76,45 @@ class TopologyBuilder:
     def write(self, topology: dict[str, Any], path: str | Path) -> Path:
         validate_topology(topology)
         return write_json(path, topology)
+
+    # ------------------------------------------------------------- minimal RAG form
+    def build_simple(self, topology: dict[str, Any]) -> dict[str, Any]:
+        """Project the canonical topology onto the minimal form handed to the RAG.
+
+        Only devices (id, type, name, 4-key network) and links (id, source, target, 3-key
+        network). Pure projection: nothing is added, so a value is null here exactly when it
+        is null in ``topology.json``. A device with zero or several addresses has an all-null
+        ``network`` (the minimal form cannot hold several; ``topology.json`` keeps them all).
+        """
+        ids = [d["id"] for d in topology["devices"]] + [lk["id"] for lk in topology["links"]]
+        short = {i: _short_id(i) for i in ids}
+        if len(set(short.values())) != len(short):  # renumbering would collide: keep original ids
+            short = {i: i for i in ids}
+        devices = [
+            {
+                "id": short[d["id"]],
+                "type": self.type_aliases.get(d["type"], d["type"]),
+                "name": d["name"],
+                "network": {k: d["network"][k] for k in SIMPLE_NETWORK_KEYS},
+            }
+            for d in topology["devices"]
+        ]
+        links = [
+            {
+                "id": short[lk["id"]],
+                "source": short[lk["source"]],
+                "target": None if lk["target"] is None else short[lk["target"]],
+                "network": {k: lk["network"][k] for k in LINK_NETWORK_KEYS},
+            }
+            for lk in topology["links"]
+        ]
+        simple = {"devices": devices, "links": links}
+        validate_simple(simple)
+        return simple
+
+    def write_simple(self, simple: dict[str, Any], path: str | Path) -> Path:
+        validate_simple(simple)
+        return write_json(path, simple)
 
     # ------------------------------------------------------------------------- shaping
     @staticmethod
@@ -141,6 +194,29 @@ def validate_topology(t: dict[str, Any]) -> None:
                 raise TopologyValidationError(
                     f"device {d['id']}: address references unknown link {a['link_id']!r}"
                 )
+
+
+def validate_simple(t: dict[str, Any]) -> None:
+    if set(t) != {"devices", "links"}:
+        raise TopologyValidationError("minimal topology must contain exactly 'devices' and 'links'")
+    ids = [d["id"] for d in t["devices"]]
+    if len(ids) != len(set(ids)) or len({lk["id"] for lk in t["links"]}) != len(t["links"]):
+        raise TopologyValidationError("duplicate ids in minimal topology")
+    for d in t["devices"]:
+        if set(d) != {"id", "type", "name", "network"} or set(d["network"]) != set(
+            SIMPLE_NETWORK_KEYS
+        ):
+            raise TopologyValidationError(f"device {d.get('id')}: unexpected shape")
+        _check_addr(d["network"], f"device {d['id']}", host=False)
+    for lk in t["links"]:
+        if set(lk) != {"id", "source", "target", "network"} or set(lk["network"]) != set(
+            LINK_NETWORK_KEYS
+        ):
+            raise TopologyValidationError(f"link {lk.get('id')}: unexpected shape")
+        for end in ("source", "target"):
+            if lk[end] is not None and lk[end] not in set(ids):
+                raise TopologyValidationError(f"link {lk['id']}: {end} {lk[end]!r} is not a device")
+        _check_addr(lk["network"], f"link {lk['id']}", host=False)
 
 
 def _check_addr(a: dict[str, Any], where: str, host: bool) -> None:

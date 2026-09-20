@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from json_io import dumps_json, loads_json
+from readiness import check_readiness
 
 PROFILE = "aws_single_host_docker_v1"
 INSTANCE_TYPES = {
@@ -47,6 +48,16 @@ def load_plan(path: Path) -> dict[str, Any]:
 
 
 def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
+    """Reject malformed plans with one public exception type before writing files."""
+    try:
+        return _validate_plan(plan)
+    except UnsupportedPlan:
+        raise
+    except (KeyError, TypeError, ValueError) as error:
+        raise UnsupportedPlan(f"Malformed generator plan: {error}") from error
+
+
+def _validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
     """Accept the documented concrete backend contract; never infer a translation."""
     require(isinstance(plan, dict), "Input must be a RAG plan object, not raw architecture")
     architecture = plan.get("architecture")
@@ -56,6 +67,8 @@ def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
         all(isinstance(x, dict) for x in (architecture, cloud, ansible)),
         "Require architecture, cloud_plan and ansible_plan objects",
     )
+    report = check_readiness(architecture)
+    require(report["ready"], "Source architecture is not ready: " + dumps_json(report["errors"]))
     require(
         plan.get("limitations") == [],
         "Resolve plan limitations before generating executable artifacts",
@@ -194,6 +207,7 @@ def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
         used == ports,
         "This profile requires every interface to have an explicit cable; use a disabled edge for a down cable",
     )
+    _reject_switch_loops(by_id, edges)
     mappings = cloud.get("component_mapping", [])
     require(
         isinstance(mappings, list) and len(mappings) == len(nodes),
@@ -229,6 +243,44 @@ def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
         "root_volume_gib": disk,
     }
     return result
+
+
+def _reject_switch_loops(by_id: dict, edges: list) -> None:
+    """The v1 switch has no STP; an active L2 cycle cannot be deployed safely."""
+    parents = {}
+
+    def root(key):
+        parents.setdefault(key, key)
+        while parents[key] != key:
+            parents[key] = parents[parents[key]]
+            key = parents[key]
+        return key
+
+    ports = {(nid, port["id"]): port for nid, node in by_id.items() for port in node["interfaces"]}
+    for edge in edges:
+        if not edge.get("enabled", True):
+            continue
+        ends = [edge["source"], edge["target"]]
+        if any(by_id[end["component"]]["type"] != "switch" for end in ends):
+            continue
+        if any(
+            not ports[(end["component"], end["interface"])].get("enabled", True) for end in ends
+        ):
+            continue
+        left, right = [
+            root(
+                (
+                    end["component"],
+                    ports[(end["component"], end["interface"])].get("access_vlan", 1),
+                )
+            )
+            for end in ends
+        ]
+        require(
+            left != right,
+            "Active Layer 2 loop: this profile does not implement STP or link aggregation",
+        )
+        parents[left] = right
 
 
 def _routing(node: dict) -> None:

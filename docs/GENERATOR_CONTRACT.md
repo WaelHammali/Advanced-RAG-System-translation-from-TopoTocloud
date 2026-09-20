@@ -3,7 +3,9 @@
 Profile: `aws_single_host_docker_v1`. Both generators consume the same **RAG plan**,
 not raw topology JSON. The Python generator validates its supported contract and
 never uses an LLM. This downstream capability check is separate from the RAG's
-new input-readiness gate; a ready topology is not necessarily supported here.
+input-readiness gate; a ready topology is not necessarily supported here. Both
+generators repeat readiness checks on `architecture`, including hand-written
+plans, and report malformed/unsupported plans through `UnsupportedPlan`.
 
 The reviewed [example plan](../examples/generator_plan.json) is a hand-authored
 fixture, not a live model result. Its [input architecture](../examples/generator_architecture.json)
@@ -47,9 +49,9 @@ report limitations, after which the generators refuse to publish artifacts.
 | Feature | Implemented subset |
 | --- | --- |
 | Components | `pc`, `server`, `router`, `switch`; Debian 12 userspace |
-| Interfaces | Explicit Linux-safe names, optional IPv4 CIDR, enabled state |
+| Interfaces | Explicit Linux-safe names, required IPv4 CIDR on non-switch ports, enabled state |
 | Edges | Named point-to-point cables; each interface appears exactly once; disabled cables retained |
-| Switching | Access VLANs 1-4094; one isolated Linux bridge per switch; STP disabled |
+| Switching | Access VLANs 1-4094; one isolated Linux bridge per switch; STP disabled; active L2 cycles rejected |
 | Hosts | Explicit interface/default gateway |
 | Static routes | Destination, next hop, explicit interface, optional kernel metric |
 | OSPF | v2; router ID, per-interface area, broadcast/point-to-point, cost, passive state |

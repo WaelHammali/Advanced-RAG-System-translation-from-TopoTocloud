@@ -173,10 +173,10 @@ class ConfigurationValidator:
                 if "address" in listener:
                     self.address(listener["address"], listen_path + "/address")
 
-    def ansible(self, value: Any, path: str) -> None:
-        ansible = self.object(value, path)
+    def automation(self, value: Any, path: str) -> None:
+        automation = self.object(value, path)
         for connection, connection_path in self.objects(
-            ansible.get("connections", []), path + "/connections"
+            automation.get("connections", []), path + "/connections"
         ):
             self.references(
                 connection.get("target_ids"),
@@ -184,7 +184,7 @@ class ConfigurationValidator:
                 connection_path + "/target_ids",
                 nonempty=True,
             )
-        tasks = list(self.objects(ansible.get("tasks", []), path + "/tasks"))
+        tasks = list(self.objects(automation.get("tasks", []), path + "/tasks"))
         task_paths = {}
         for task, task_path in tasks:
             identifier = task.get("id")
@@ -234,12 +234,24 @@ def validate_configuration(
     architecture: dict, interfaces: dict[str, set[str]], error: Error
 ) -> None:
     validator = ConfigurationValidator(interfaces, error)
-    for key, names in (("cloud", ("provider", "region")), ("generation", ("profile",))):
-        if key in architecture:
-            settings = validator.object(architecture[key], "/" + key)
-            for name in names:
-                if name in settings:
-                    validator.text(settings[name], f"/{key}/{name}")
+    cloud = validator.object(architecture.get("cloud", {}), "/cloud")
+    for name in ("provider", "region"):
+        if name in cloud:
+            validator.text(cloud[name], "/cloud/" + name)
+    if cloud.get("provider", "aws") != "aws":
+        error("unsupported_cloud_provider", "/cloud/provider", "This translator targets AWS only.")
+    if "generation" in architecture:
+        error(
+            "unsupported_generation_settings",
+            "/generation",
+            "Remove generator profile settings; this application returns an AWS JSON plan only.",
+        )
+    if "ansible" in architecture:
+        error(
+            "legacy_automation_field",
+            "/ansible",
+            "Use automation for declarative tasks; tool-specific generation is outside this application.",
+        )
     if "schema_version" in architecture and architecture["schema_version"] != "1.0":
         error(
             "unsupported_schema_version",
@@ -268,4 +280,4 @@ def validate_configuration(
                 for key in ("distribution", "version"):
                     if key in settings:
                         validator.text(settings[key], path + "/os/" + key)
-    validator.ansible(architecture.get("ansible", {}), "/ansible")
+    validator.automation(architecture.get("automation", {}), "/automation")

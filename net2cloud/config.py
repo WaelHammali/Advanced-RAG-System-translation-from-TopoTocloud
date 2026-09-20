@@ -5,9 +5,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-ROOT_DIR = Path(__file__).resolve().parent
+ROOT_DIR = Path(__file__).resolve().parents[1]
 KB_DIR = Path(os.environ.get("NET2TF_KB_DIR", ROOT_DIR / "kb"))
-INDEX_DIR = Path(os.environ.get("NET2TF_INDEX_DIR", ROOT_DIR / "index"))
+INDEX_DIR = Path(os.environ.get("NET2TF_INDEX_DIR", ROOT_DIR / ".cache" / "net2cloud"))
 # Listed on Groq's Free plan; billing still depends on the caller's account tier.
 SUPPORTED_PLAN_MODELS = ("openai/gpt-oss-120b", "openai/gpt-oss-20b")
 PLAN_MODEL = os.environ.get("NET2TF_PLAN_MODEL", SUPPORTED_PLAN_MODELS[0])

@@ -4,16 +4,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from config import PLAN_MAX_COMPLETION_TOKENS, PLAN_MODEL, ROOT_DIR, SUPPORTED_PLAN_MODELS
-from contracts import JSONObject, KnowledgeRecord
-from json_io import dumps_json, loads_json
-from readiness import require_ready
+from .config import PLAN_MAX_COMPLETION_TOKENS, PLAN_MODEL, ROOT_DIR, SUPPORTED_PLAN_MODELS
+from .contracts import JSONObject, KnowledgeRecord
+from .json_io import dumps_json, loads_json
+from .readiness import require_ready
 
-SYSTEM_PROMPT = (ROOT_DIR / "prompts" / "planner.txt").read_text(encoding="utf-8")
+SYSTEM_PROMPT = (ROOT_DIR / "net2cloud" / "prompts" / "planner.txt").read_text(encoding="utf-8")
 
 PLAN_SECTION_TYPES = {
     "cloud_plan": dict,
-    "ansible_plan": dict,
     "rule_ids": list,
     "limitations": list,
 }
@@ -54,6 +53,8 @@ def _parse_plan(content: str) -> JSONObject:
             raise PlanResponseError(
                 f"The model plan requires {section} as {expected_type.__name__}."
             )
+    if plan["cloud_plan"].get("provider") != "aws":
+        raise PlanResponseError("cloud_plan.provider must be aws.")
     unexpected = set(plan) - PLAN_SECTION_TYPES.keys() - {"architecture", "knowledge"}
     if unexpected:
         raise PlanResponseError(

@@ -1,6 +1,5 @@
-"""Boundary matrix: completeness, intentional failures, and generator capabilities."""
+"""Boundary matrix: completeness, intentional failures, and input preservation."""
 
-import importlib.util
 import json
 import math
 from copy import deepcopy
@@ -8,52 +7,14 @@ from pathlib import Path
 
 import pytest
 
-import app
-from generator_common import UnsupportedPlan, runtime_spec, validate_plan
-from readiness import check_readiness
+from net2cloud import app
+from net2cloud.readiness import check_readiness
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def example(name):
     return json.loads((ROOT / "examples/edge_cases" / (name + ".json")).read_text())
-
-
-def plan_for(architecture):
-    # Hand-authored deterministic fixture; does not claim to test an LLM response.
-    plan = json.loads((ROOT / "examples/generator_plan.json").read_text())
-    plan["architecture"] = deepcopy(architecture)
-    nodes = architecture["components"]
-    plan["cloud_plan"]["component_mapping"] = [
-        {
-            "component_id": n["id"],
-            "role": n["type"],
-            "cloud_representation": "docker_container",
-            "configuration": {"worker_id": "lab_worker"},
-            "rule_ids": [],
-        }
-        for n in nodes
-    ]
-    plan["ansible_plan"]["targets"] = [
-        {
-            "component_id": n["id"],
-            "connection": {"type": "docker_exec", "worker_id": "lab_worker"},
-            "variables": {},
-        }
-        for n in nodes
-    ]
-    plan["ansible_plan"]["tasks"] = [
-        {
-            "id": f"configure-{n['id']}",
-            "target_ids": [n["id"]],
-            "operation": "lab.configure_component",
-            "parameters": {"source_component_id": n["id"]},
-            "depends_on": [],
-            "rule_ids": [],
-        }
-        for n in nodes
-    ]
-    return plan
 
 
 @pytest.mark.parametrize(
@@ -73,66 +34,6 @@ def test_topology_matrix(case, ready):
     before = deepcopy(architecture)
     assert check_readiness(architecture)["ready"] is ready
     assert architecture == before
-
-
-@pytest.mark.parametrize(
-    "case",
-    ["two_pcs_direct", "two_pcs_different_subnets", "two_pcs_31", "two_pcs_32", "separate_pairs"],
-)
-def test_minimal_topologies_generate_both_projects_without_invented_routes(case, tmp_path):
-    architecture = example(case)
-    plan = plan_for(architecture)
-    for folder in ("Generator terraform", "Generator ansible"):
-        spec = importlib.util.spec_from_file_location(folder, ROOT / folder / "generator.py")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        output = tmp_path / folder
-        module.generate(plan, output)
-        saved = json.loads((output / "arch.json").read_text())
-        assert saved["architecture"] == architecture
-    runtime = json.loads((tmp_path / "Generator ansible/files/lab.json").read_text())
-    assert runtime["edges"] == architecture["edges"]
-    assert all(not n.get("routing") for n in runtime["nodes"])
-    assert len(runtime["nodes"]) == len(architecture["components"])
-
-
-@pytest.mark.parametrize("failure", ["missing_ip", "self_link", "invalid_name", "isolated"])
-def test_direct_generator_cannot_bypass_readiness(failure):
-    architecture = example("two_pcs_direct")
-    if failure == "missing_ip":
-        del architecture["components"][0]["interfaces"][0]["ipv4"]
-    elif failure == "invalid_name":
-        architecture["components"][0]["name"] = ""
-    elif failure == "isolated":
-        architecture["components"].append(example("single_pc")["components"][0] | {"id": "alone"})
-    else:
-        architecture["components"][0]["interfaces"].append({"id": "eth1", "ipv4": "10.1.0.1/24"})
-        architecture["edges"][0]["target"] = {"component": "PC1", "interface": "eth1"}
-    with pytest.raises(UnsupportedPlan, match="Source architecture is not ready"):
-        validate_plan(plan_for(architecture))
-
-
-def test_switch_loop_is_ready_but_unsupported_without_stp():
-    architecture = example("switch_loop")
-    assert check_readiness(architecture)["ready"]
-    with pytest.raises(UnsupportedPlan, match="Layer 2 loop"):
-        validate_plan(plan_for(architecture))
-    architecture["edges"][0]["enabled"] = False
-    assert validate_plan(plan_for(architecture))
-    assert any(
-        not p["link_enabled"]
-        for n in runtime_spec(plan_for(architecture))["nodes"]
-        for p in n["interfaces"]
-    )
-
-
-def test_vlan_partition_or_disabled_interface_breaks_a_switch_loop():
-    architecture = example("switch_loop")
-    architecture["components"][0]["interfaces"][0]["access_vlan"] = 2
-    assert validate_plan(plan_for(architecture))
-    architecture = example("switch_loop")
-    architecture["components"][0]["interfaces"][0]["enabled"] = False
-    assert validate_plan(plan_for(architecture))
 
 
 @pytest.mark.parametrize(
@@ -209,26 +110,26 @@ def test_nested_configuration_errors_block_model_before_retrieval(field, value, 
         {"tasks": [{"id": "a", "target_ids": [[], "PC1"]}]},
     ],
 )
-def test_malformed_ansible_produces_structured_errors(value):
+def test_malformed_automation_produces_structured_errors(value):
     architecture = example("two_pcs_direct")
-    architecture["ansible"] = value
+    architecture["automation"] = value
     assert not check_readiness(architecture)["ready"]
 
 
-def test_ansible_dependencies_allow_forward_references_but_reject_cycles():
+def test_automation_dependencies_allow_forward_references_but_reject_cycles():
     architecture = example("two_pcs_direct")
-    architecture["ansible"] = {
+    architecture["automation"] = {
         "tasks": [
             {"id": "a", "target_ids": ["PC1"], "operation": "custom.module", "depends_on": ["b"]},
             {"id": "b", "target_ids": ["PC2"], "operation": "custom.module", "depends_on": []},
         ]
     }
     assert check_readiness(architecture)["ready"]
-    architecture["ansible"]["tasks"][1]["depends_on"] = ["a"]
+    architecture["automation"]["tasks"][1]["depends_on"] = ["a"]
     assert "cyclic_task_dependencies" in {
         e["code"] for e in check_readiness(architecture)["errors"]
     }
-    architecture["ansible"]["tasks"][1]["depends_on"] = ["missing"]
+    architecture["automation"]["tasks"][1]["depends_on"] = ["missing"]
     assert "unknown_reference" in {e["code"] for e in check_readiness(architecture)["errors"]}
 
 
@@ -286,26 +187,6 @@ def test_explicit_null_switch_address_is_not_equivalent_to_omission():
     architecture = example("switch_loop")
     architecture["components"][0]["interfaces"][0]["ipv4"] = None
     assert "missing_ip_address" in {e["code"] for e in check_readiness(architecture)["errors"]}
-
-
-@pytest.mark.parametrize(
-    "path,value",
-    [
-        (["cloud_plan", "component_mapping"], [None]),
-        (["ansible_plan", "targets"], None),
-        (["ansible_plan", "tasks"], [None]),
-        (["cloud_plan", "settings", "instance_type"], []),
-        (["cloud_plan", "component_mapping", 0, "component_id"], []),
-    ],
-)
-def test_malformed_generator_envelopes_raise_the_public_exception(path, value):
-    plan = plan_for(example("two_pcs_direct"))
-    target = plan
-    for key in path[:-1]:
-        target = target[key]
-    target[path[-1]] = value
-    with pytest.raises(UnsupportedPlan):
-        validate_plan(plan)
 
 
 def test_field_type_mutations_never_crash_the_readiness_api():
@@ -394,7 +275,7 @@ def test_graph_and_address_boundary_errors(mutation, code):
 
 def test_large_task_chain_and_topology_do_not_require_recursive_graph_walks():
     architecture = example("two_pcs_direct")
-    architecture["ansible"] = {
+    architecture["automation"] = {
         "tasks": [
             {
                 "id": f"t{i}",
@@ -406,7 +287,7 @@ def test_large_task_chain_and_topology_do_not_require_recursive_graph_walks():
         ]
     }
     assert check_readiness(architecture)["ready"]
-    architecture["ansible"]["tasks"][-1]["depends_on"] = ["t0"]
+    architecture["automation"]["tasks"][-1]["depends_on"] = ["t0"]
     assert "cyclic_task_dependencies" in {
         e["code"] for e in check_readiness(architecture)["errors"]
     }

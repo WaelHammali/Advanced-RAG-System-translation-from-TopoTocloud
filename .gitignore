@@ -32,3 +32,6 @@ htmlcov/
 *.tfstate
 *.tfstate.*
 *.tfplan
+
+# Runtime caches
+.cache/

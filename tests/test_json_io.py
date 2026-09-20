@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from json_io import atomic_path, dumps_json, loads_json, write_json
+from net2cloud.json_io import atomic_path, dumps_json, loads_json, write_json
 
 
 @pytest.mark.parametrize(

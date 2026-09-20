@@ -1,4 +1,4 @@
-"""Retrieve networking and Ansible knowledge for a prepared architecture JSON."""
+"""Retrieve networking and automation knowledge for a prepared architecture JSON."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from config import (
+from .config import (
     CORE_RULE_IDS,
     EMBED_MAX_TOKENS,
     EMBED_MODEL,
@@ -22,8 +22,8 @@ from config import (
     RETRIEVAL_BACKEND,
     TOP_K,
 )
-from contracts import JSONObject, KnowledgeRecord
-from json_io import atomic_path, dumps_json, loads_json, write_json
+from .contracts import JSONObject, KnowledgeRecord
+from .json_io import atomic_path, dumps_json, loads_json, write_json
 
 
 @dataclass
@@ -107,8 +107,8 @@ def _subject_query(subject: str, entry: Any) -> str:
         if subject == "services" and entry.get("protocol"):
             return f"{entry['protocol']} {entry.get('implementation', '')}"
         if subject == "tasks":
-            return "ansible tasks " + str(entry.get("operation", entry.get("module", "")))
-        if subject in {"routing", "ansible"}:
+            return "automation tasks " + str(entry.get("operation", entry.get("module", "")))
+        if subject in {"routing", "automation"}:
             fields = " ".join(key for key, value in entry.items() if value)
             return f"{subject} {fields.replace('_', ' ')}"
     return _json({subject: entry})
@@ -137,7 +137,7 @@ def _configuration_queries(architecture: dict[str, Any]) -> list[str]:
                         queries.append("switch chain bridge STP loop switching paths")
                 if subject == "ipv4" and isinstance(item, str) and item.endswith(("/31", "/32")):
                     queries.append("point-to-point /31 /32 host route prefix")
-                if subject in {"routing", "protocols", "services", "ansible", "tasks"}:
+                if subject in {"routing", "protocols", "services", "automation", "tasks"}:
                     entries = item if isinstance(item, list) else [item]
                     for entry in entries:
                         if not entry:

@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-import retriever
-from config import CORE_RULE_IDS
-from retriever import KnowledgeRetriever
+from net2cloud import retriever
+from net2cloud.config import CORE_RULE_IDS
+from net2cloud.retriever import KnowledgeRetriever
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -101,7 +101,7 @@ def test_content_and_filename_changes_refresh_cache_without_file_count_change(tm
     shutil.copytree(ROOT / "kb", kb)
     engine = KnowledgeRetriever(backend="lexical", kb_dir=kb, index_dir=tmp_path / "index")
     old_records, old_hash = engine._documents()
-    path = kb / "application_services.md"
+    path = kb / "rules/application_services.md"
     path.write_text(path.read_text().replace("HTTP services", "HTTP applications"))
     new_records, new_hash = engine._documents()
     assert old_hash != new_hash

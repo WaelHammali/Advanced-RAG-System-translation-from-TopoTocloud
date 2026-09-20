@@ -268,7 +268,7 @@
       "enabled": true
     }
   ],
-  "ansible": {
+  "automation": {
     "connections": [
       {
         "target_ids": [
@@ -285,7 +285,7 @@
         "target_ids": [
           "WEB1"
         ],
-        "operation": "ansible.builtin.package",
+        "operation": "package.install",
         "parameters": {
           "name": [
             "curl"

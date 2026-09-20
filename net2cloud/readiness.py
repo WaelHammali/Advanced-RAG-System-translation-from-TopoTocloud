@@ -1,7 +1,7 @@
 """Deterministic architecture completeness checks before retrieval or translation.
 
 Readiness checks names, links, addresses and known configuration shapes/references.
-It does not predict reachability, repair settings or decide generator support.
+It does not predict reachability, repair settings or certify implementation support.
 """
 
 from __future__ import annotations
@@ -10,8 +10,8 @@ import ipaddress
 import math
 from typing import Any
 
-from configuration_validation import validate_configuration
-from contracts import JSONObject
+from .configuration_validation import validate_configuration
+from .contracts import JSONObject
 
 
 class ArchitectureNotReady(ValueError):

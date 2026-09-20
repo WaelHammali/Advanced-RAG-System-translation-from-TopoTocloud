@@ -1,0 +1,135 @@
+{
+  "cloud_plan": {
+    "provider": "aws",
+    "translation_mode": "behavioral_lab",
+    "resources": [
+      {
+        "id": "lab_worker",
+        "type": "ec2.instance",
+        "purpose": "Host isolated educational network stacks",
+        "capacity": "requires workload sizing"
+      }
+    ],
+    "component_mapping": [
+      {
+        "component_id": "PC1",
+        "role": "pc",
+        "cloud_representation": "isolated_network_namespace",
+        "resource_ref": "lab_worker",
+        "configuration": {
+          "source_component_id": "PC1"
+        },
+        "rule_ids": [
+          "BACKEND-001"
+        ]
+      },
+      {
+        "component_id": "PC2",
+        "role": "pc",
+        "cloud_representation": "isolated_network_namespace",
+        "resource_ref": "lab_worker",
+        "configuration": {
+          "source_component_id": "PC2"
+        },
+        "rule_ids": [
+          "BACKEND-001"
+        ]
+      }
+    ],
+    "networking": {
+      "links": [
+        {
+          "source_edge_id": "cable",
+          "implementation": "veth",
+          "resource_ref": "lab_worker"
+        }
+      ],
+      "addressing": [
+        {
+          "component_id": "PC1",
+          "interfaces": [
+            {
+              "id": "eth0",
+              "ipv4": "10.0.0.1/24"
+            }
+          ]
+        },
+        {
+          "component_id": "PC2",
+          "interfaces": [
+            {
+              "id": "eth0",
+              "ipv4": "10.0.0.2/24"
+            }
+          ]
+        }
+      ],
+      "routing": [],
+      "security": []
+    },
+    "configuration": {
+      "targets": [
+        {
+          "component_id": "PC1",
+          "resource_ref": "lab_worker"
+        },
+        {
+          "component_id": "PC2",
+          "resource_ref": "lab_worker"
+        }
+      ],
+      "tasks": [],
+      "services": []
+    },
+    "dependencies": [
+      "An external runtime must realize the isolated stacks and exact source cable."
+    ]
+  },
+  "rule_ids": [
+    "BACKEND-001",
+    "EX-PC-DIRECT"
+  ],
+  "limitations": [
+    "Illustrative hand-authored plan; capacity, management access and live connectivity are not verified."
+  ],
+  "architecture": {
+    "schema_version": "1.0",
+    "translation_mode": "behavioral_lab",
+    "components": [
+      {
+        "id": "PC1",
+        "type": "pc",
+        "interfaces": [
+          {
+            "id": "eth0",
+            "ipv4": "10.0.0.1/24"
+          }
+        ]
+      },
+      {
+        "id": "PC2",
+        "type": "pc",
+        "interfaces": [
+          {
+            "id": "eth0",
+            "ipv4": "10.0.0.2/24"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "id": "cable",
+        "source": {
+          "component": "PC1",
+          "interface": "eth0"
+        },
+        "target": {
+          "component": "PC2",
+          "interface": "eth0"
+        }
+      }
+    ]
+  },
+  "knowledge": []
+}

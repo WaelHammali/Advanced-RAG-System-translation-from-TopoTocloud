@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-import app
-from planner import plan_with_rag
-from readiness import ArchitectureNotReady, check_readiness
+from net2cloud import app
+from net2cloud.planner import plan_with_rag
+from net2cloud.readiness import ArchitectureNotReady, check_readiness
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -18,7 +18,7 @@ def architecture():
     return json.loads((ROOT / "examples/architecture.json").read_text())
 
 
-@pytest.mark.parametrize("filename", ["architecture.json", "generator_architecture.json"])
+@pytest.mark.parametrize("filename", ["architecture.json", "edge_cases/two_pcs_direct.json"])
 def test_complete_examples_are_ready_and_unchanged(filename):
     architecture = json.loads((ROOT / "examples" / filename).read_text())
     original = deepcopy(architecture)
@@ -192,3 +192,22 @@ def test_check_command_runs_offline_and_reports_readiness(
     path.write_text(json.dumps(architecture))
     assert app.main(["check", "--input", str(path)]) == 2
     assert json.loads(capsys.readouterr().out)["ready"] is False
+
+
+@pytest.mark.parametrize(
+    "field,value,code",
+    [
+        ("cloud", {"provider": "azure"}, "unsupported_cloud_provider"),
+        ("cloud", {"provider": "gcp"}, "unsupported_cloud_provider"),
+        ("generation", {"profile": "aws_single_host_docker_v1"}, "unsupported_generation_settings"),
+        ("ansible", {"tasks": []}, "legacy_automation_field"),
+    ],
+)
+def test_out_of_scope_inputs_are_rejected_before_retrieval(
+    field, value, code, architecture, monkeypatch
+):
+    architecture[field] = value
+    monkeypatch.setattr(app, "KnowledgeRetriever", lambda: pytest.fail("Unexpected retrieval"))
+    with pytest.raises(ArchitectureNotReady) as error:
+        app.plan_architecture(architecture)
+    assert code in {item["code"] for item in error.value.report["errors"]}

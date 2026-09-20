@@ -1,2 +1,0 @@
-# Generator uses the Python standard library only.
-# Terraform and the AWS provider are needed later to validate/deploy artifacts.

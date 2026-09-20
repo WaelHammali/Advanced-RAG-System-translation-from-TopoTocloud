@@ -13,6 +13,8 @@ input + discussion  →  JSON → readiness → retrieval → plan  →  Terrafo
 The application blocks translation until components have unique IDs, types and
 interfaces, all components have valid links to other components, and non-L2
 interfaces have valid IPv4 addresses with prefixes. Switch ports do not need IPs.
+Known routing, service and Ansible field types and references are checked too,
+including cyclic task dependencies.
 The check runs before retrieval or model calls and returns all detected issues
 with JSON paths. It does not add addresses, names or links to repair the input.
 
@@ -38,6 +40,9 @@ python app.py check --input examples/architecture.json
 the same gate automatically. Exit status 2 means not ready: `plan` writes its
 readiness report to stderr and publishes no new plan. Exit status 1 means a
 syntax/runtime error. See [the readiness rules](docs/READINESS.md).
+The [architecture edge-case study](docs/ARCHITECTURE_EDGE_CASES.md) covers single
+devices, direct PC links, /31 and /32, separate groups, switch loops, malformed
+configuration and generator boundaries, with runnable minimal JSON examples.
 
 Use Python 3.10+ with compatible dependencies:
 
@@ -142,6 +147,7 @@ company readiness and live network fidelity require separate validation.
 
 - [app.py](app.py): Python API and JSON CLI.
 - [readiness.py](readiness.py): deterministic input gate and structured issue reports.
+- [configuration_validation.py](configuration_validation.py): known configuration types and references.
 - [retriever.py](retriever.py): retrieval and content-aware caching.
 - [planner.py](planner.py): one model call producing a JSON plan.
 - [prompts/planner.txt](prompts/planner.txt): planning instructions and output shape.

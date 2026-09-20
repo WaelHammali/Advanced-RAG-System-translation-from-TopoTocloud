@@ -1,12 +1,12 @@
 # Current implementation and limits
 
-Reviewed: 2026-09-19. The active application checks architecture JSON readiness and returns
+Reviewed: 2026-09-20. The active application checks architecture JSON readiness and returns
 a cloud/Ansible JSON plan for a separate generator.
 
 | Area | Current behavior |
 | --- | --- |
 | Input | Consumes a JSON object directly; preserves arbitrary nested fields. |
-| Readiness and discussion | Local gate blocks missing IDs/types/interfaces/IP prefixes, bad link references and isolated components before retrieval. Discussion stays in the calling application. |
+| Readiness and discussion | Local gate checks graph prerequisites, known nested types/references and Ansible dependency cycles. Generators repeat this gate. Discussion stays in the calling application. |
 | Retrieval | BM25 or hybrid embeddings/reranking, mode filtering, mandatory core rules and configuration-subject matching. |
 | Caching | Refreshes on document content, file names and retriever changes; embedding identity also includes model/settings. |
 | Planning | One Groq call asks for structured cloud and Ansible intentions with exact source targets. |
@@ -34,6 +34,9 @@ They have artifact and mocked-command tests, not live AWS or privileged Docker
 conformance evidence. OSPF/RIP convergence, packet paths, HTTP availability and
 negative connectivity still need measurements. Unsupported provider/runtime
 requirements remain visible in limitations and prevent generation.
+The generator rejects active Layer 2 switch/VLAN cycles because STP is not
+implemented. See the [edge-case study](ARCHITECTURE_EDGE_CASES.md) for checked
+boundaries and the distinction between complete JSON and working connectivity.
 
 Offline tests cover contract behavior, lexical retrieval and cache mechanics.
 Stubbed hybrid tests, where present, verify orchestration rather than real model

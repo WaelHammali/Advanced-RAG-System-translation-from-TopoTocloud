@@ -90,6 +90,16 @@ These limits are deliberate: passing readiness means the requested identity,
 addressing and link prerequisites are complete. It does not mean ping will pass
 or every feature has an implementation.
 
+## Issue list
+
+`net2cloud.issues.list_issues(architecture)` returns every readiness problem as a
+`(component, other, message)` tuple, for a person or an assistant to act on. `other`
+is `""` when one component is concerned; it names the second component for a shared
+name or a shared IP address. Problems belonging to no component have an empty
+component. Same-address clashes are reported for enabled interfaces in one connected
+group only and never block translation, so the list can be non-empty while the file
+is ready. It does not change the architecture or the `check` report.
+
 ## API and CLI behavior
 
 `net2cloud.plan_architecture()` and `net2cloud.planner.plan_with_rag()` both enforce the gate.

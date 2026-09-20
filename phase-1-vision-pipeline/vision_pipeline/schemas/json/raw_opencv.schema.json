@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "raw_opencv.json",
+  "description": "Logical cable candidates. start/end are null when an endpoint cannot be determined. Coordinates: ORIGINAL image pixels.",
+  "type": "object",
+  "required": ["schema_version", "coordinate_system", "image", "link_candidates"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "coordinate_system": {"const": "original_image_pixels"},
+    "image": {"$ref": "#/$defs/image"},
+    "producer": {"type": "object"},
+    "stats": {"type": "object"},
+    "link_candidates": {"type": "array", "items": {
+      "type": "object",
+      "required": ["id", "segments", "polyline", "path_type", "start", "end", "endpoints", "confidence", "quality"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^link_candidate_[0-9]{3,}$"},
+        "segments": {"type": "array", "items": {"type": "object", "required": ["p1", "p2"],
+                     "properties": {"p1": {"$ref": "#/$defs/point"}, "p2": {"$ref": "#/$defs/point"}}}},
+        "polyline": {"type": "array", "items": {"$ref": "#/$defs/point"}},
+        "path_type": {"enum": ["single", "chain", "branched", "cycle"]},
+        "start": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/point"}]},
+        "end": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/point"}]},
+        "endpoints": {"type": "array", "items": {"$ref": "#/$defs/point"}},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "quality": {"type": "object"}
+      }
+    }}
+  },
+  "$defs": {
+    "image": {"type": "object", "required": ["path", "width", "height"],
+              "properties": {"path": {"type": "string"}, "width": {"type": "integer", "minimum": 1}, "height": {"type": "integer", "minimum": 1}}},
+    "point": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}
+  }
+}

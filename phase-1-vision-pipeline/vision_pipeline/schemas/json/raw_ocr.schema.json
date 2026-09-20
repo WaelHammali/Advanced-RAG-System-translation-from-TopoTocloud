@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "raw_ocr.json",
+  "description": "Every recognised text region, verbatim. No semantics. Coordinates: ORIGINAL image pixels.",
+  "type": "object",
+  "required": ["schema_version", "coordinate_system", "image", "texts"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "coordinate_system": {"const": "original_image_pixels"},
+    "image": {"$ref": "#/$defs/image"},
+    "producer": {"type": "object"},
+    "texts": {"type": "array", "items": {
+      "type": "object",
+      "required": ["id", "text", "confidence", "bbox", "center", "polygon"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^text_[0-9]{3,}$"},
+        "text": {"type": "string"},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "bbox": {"$ref": "#/$defs/bbox"},
+        "center": {"$ref": "#/$defs/point"},
+        "polygon": {"oneOf": [{"type": "null"}, {"type": "array", "items": {"$ref": "#/$defs/point"}, "minItems": 3}]}
+      }
+    }}
+  },
+  "$defs": {
+    "image": {"type": "object", "required": ["path", "width", "height"],
+              "properties": {"path": {"type": "string"}, "width": {"type": "integer", "minimum": 1}, "height": {"type": "integer", "minimum": 1}}},
+    "point": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+    "bbox": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4}
+  }
+}

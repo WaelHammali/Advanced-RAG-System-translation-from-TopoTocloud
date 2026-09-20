@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "translation_mode": "behavioral_lab",
+  "components": [
+    {
+      "id": "PC1",
+      "type": "pc",
+      "interfaces": [
+        {
+          "id": "eth0",
+          "ipv4": "10.0.0.1/32"
+        }
+      ]
+    },
+    {
+      "id": "PC2",
+      "type": "pc",
+      "interfaces": [
+        {
+          "id": "eth0",
+          "ipv4": "10.0.0.2/32"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "cable",
+      "source": {
+        "component": "PC1",
+        "interface": "eth0"
+      },
+      "target": {
+        "component": "PC2",
+        "interface": "eth0"
+      }
+    }
+  ]
+}

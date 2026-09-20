@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0",
+  "translation_mode": "behavioral_lab",
+  "components": [
+    {
+      "id": "SW1",
+      "type": "switch",
+      "interfaces": [
+        {
+          "id": "p1"
+        },
+        {
+          "id": "p2"
+        }
+      ]
+    },
+    {
+      "id": "SW2",
+      "type": "switch",
+      "interfaces": [
+        {
+          "id": "p1"
+        },
+        {
+          "id": "p2"
+        }
+      ]
+    },
+    {
+      "id": "SW3",
+      "type": "switch",
+      "interfaces": [
+        {
+          "id": "p1"
+        },
+        {
+          "id": "p2"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "a",
+      "source": {
+        "component": "SW1",
+        "interface": "p1"
+      },
+      "target": {
+        "component": "SW2",
+        "interface": "p1"
+      }
+    },
+    {
+      "id": "b",
+      "source": {
+        "component": "SW2",
+        "interface": "p2"
+      },
+      "target": {
+        "component": "SW3",
+        "interface": "p1"
+      }
+    },
+    {
+      "id": "c",
+      "source": {
+        "component": "SW3",
+        "interface": "p2"
+      },
+      "target": {
+        "component": "SW1",
+        "interface": "p2"
+      }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "translation_mode": "behavioral_lab",
+  "components": [
+    {
+      "id": "PC1",
+      "type": "pc",
+      "interfaces": [
+        {
+          "id": "eth0",
+          "ipv4": "10.0.0.1/24"
+        }
+      ]
+    }
+  ],
+  "edges": []
+}

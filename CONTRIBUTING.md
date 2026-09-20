@@ -17,6 +17,8 @@ python -m pytest -q
 Tests use provider/model doubles and local fixtures. They require no API keys,
 cloud credentials, paid requests or deployed infrastructure. CI runs the same
 checks on supported Python versions; it has no infrastructure-generation job.
+Root Ruff checks exclude `phase-1-vision-pipeline/`, and pytest targets `tests/`.
+The separate Phase 1 pipeline is outside these application checks.
 
 ## Code ownership
 

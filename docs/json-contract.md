@@ -69,7 +69,9 @@ for the directly connected PC input, not live Groq output or a deployable templa
 ## Enforced response boundary
 
 The parser requires a `cloud_plan` object whose provider is `aws`, and `rule_ids`
-and `limitations` lists. Unexpected top-level fields are rejected. Model-authored
+and `limitations` lists containing only nonempty strings. Rule IDs must be unique
+and belong to the retrieved context supplied to the model. Unexpected top-level
+fields are rejected. Model-authored
 source architecture and knowledge are discarded in favor of the authoritative
 application values. Nested plan contents remain model-produced intentions; strict
 JSON Schema enforcement and full semantic output validation are not implemented.

@@ -468,3 +468,28 @@ def test_documented_aws_example_matches_the_response_boundary():
     from net2cloud.readiness import check_readiness
 
     assert check_readiness(example["architecture"])["ready"]
+
+
+@pytest.mark.parametrize(
+    "section,value",
+    [
+        ("rule_ids", [None]),
+        ("rule_ids", [{}]),
+        ("rule_ids", [""]),
+        ("rule_ids", ["CORE-001", "CORE-001"]),
+        ("limitations", [False]),
+        ("limitations", [123]),
+        ("limitations", [" "]),
+    ],
+)
+def test_malformed_citations_and_limitations_are_rejected(section, value, architecture):
+    payload = {"cloud_plan": {"provider": "aws"}, "rule_ids": [], "limitations": []}
+    payload[section] = value
+    with pytest.raises(ValueError, match=section):
+        plan_with_rag(architecture, [], client=ModelClient(json.dumps(payload)))
+
+
+def test_model_cannot_claim_rules_it_was_not_given(architecture):
+    payload = {"cloud_plan": {"provider": "aws"}, "rule_ids": ["FAKE-001"], "limitations": []}
+    with pytest.raises(ValueError, match="outside the supplied context"):
+        plan_with_rag(architecture, [], client=ModelClient(json.dumps(payload)))

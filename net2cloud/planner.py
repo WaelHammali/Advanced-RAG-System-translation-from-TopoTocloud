@@ -55,6 +55,11 @@ def _parse_plan(content: str) -> JSONObject:
             )
     if plan["cloud_plan"].get("provider") != "aws":
         raise PlanResponseError("cloud_plan.provider must be aws.")
+    for section in ("rule_ids", "limitations"):
+        if any(not isinstance(item, str) or not item.strip() for item in plan[section]):
+            raise PlanResponseError(f"{section} must contain nonempty strings.")
+    if len(set(plan["rule_ids"])) != len(plan["rule_ids"]):
+        raise PlanResponseError("rule_ids must not contain duplicates.")
     unexpected = set(plan) - PLAN_SECTION_TYPES.keys() - {"architecture", "knowledge"}
     if unexpected:
         raise PlanResponseError(
@@ -121,4 +126,10 @@ def plan_with_rag(
                 "Use a smaller lab or fewer retrieved records; no plan was generated."
             ) from error
         raise
-    return _parse_plan(_response_content(response))
+    plan = _parse_plan(_response_content(response))
+    unknown_rules = set(plan["rule_ids"]) - {record["rule_id"] for record in retrieved_chunks}
+    if unknown_rules:
+        raise PlanResponseError(
+            "Model cited rules outside the supplied context: " + ", ".join(sorted(unknown_rules))
+        )
+    return plan

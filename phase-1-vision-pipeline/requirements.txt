@@ -1,0 +1,14 @@
+# Core (always required)
+numpy>=1.24
+opencv-python-headless>=4.8
+pyyaml>=6.0
+
+# Detectors (only needed to run the real YOLO / OCR stages; fusion, topology and tests run without them).
+# Use a Python version supported by these wheels (3.10 - 3.12 is the safe choice).
+ultralytics>=8.2
+paddlepaddle>=3.0        # CPU build; see the PaddlePaddle docs for GPU builds
+paddleocr>=2.7           # both the 2.x and 3.x APIs are supported
+
+# Tests
+pytest>=8.0
+jsonschema>=4.0

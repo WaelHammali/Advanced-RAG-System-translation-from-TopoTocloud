@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv*/
+.pytest_cache/
+# model weights are never committed
+models/**/*.pt
+models/**/*.onnx
+models/**/*.engine
+# generated results
+outputs/*.json
+outputs/demo/

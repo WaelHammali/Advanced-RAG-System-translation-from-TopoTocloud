@@ -122,3 +122,10 @@ def test_reading_order_is_row_banded_and_deterministic():
         ("c", Rect(100, 300, 120, 318)),
     ]
     assert reading_order_key(items) == ["a", "b", "c"]
+
+
+def test_short_slightly_tilted_fragment_merges_into_a_long_line():
+    # regression: the fragment's own extrapolated line drifts > tol at the far end of the long
+    # segment, but the fragment itself lies within tol of the long line
+    segs = [((138, 182), (402, 182)), ((339, 177), (402, 178)), ((142, 177), (172, 177))]
+    assert len(merge_collinear(segs, **KW)) == 1

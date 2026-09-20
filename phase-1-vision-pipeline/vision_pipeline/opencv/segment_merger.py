@@ -82,8 +82,10 @@ def _compat_matrix(
         rel = pts[None, :, :] - P[:, None, :]
         return np.abs(rel[..., 0] * U[:, None, 1] - rel[..., 1] * U[:, None, 0])
 
-    perp_ok = np.maximum.reduce([perp(P), perp(Q)])
-    perp_sym = np.maximum(perp_ok, perp_ok.T)
+    perp_ok = np.maximum.reduce([perp(P), perp(Q)])  # [i, j]: endpoints of j vs. the line of i
+    # judge each pair by the SHORTER segment's distance to the LONGER one's line: a short
+    # fragment's own (noisy) direction says little about the far end of a long line
+    perp_sym = np.where(L[:, None] >= L[None, :], perp_ok, perp_ok.T)
 
     def along(pts: np.ndarray) -> np.ndarray:  # projection of pts[j] on segment i's axis
         rel = pts[None, :, :] - P[:, None, :]

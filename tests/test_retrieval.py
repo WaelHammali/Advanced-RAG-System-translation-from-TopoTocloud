@@ -178,6 +178,38 @@ def test_hybrid_windows_cache_and_reranking_without_model_download(tmp_path, mon
     assert engine.retrieve(architecture) == first
     assert embedder.document_calls == 3
 
+    # Valid-looking arrays with the wrong width/type, empty files and NPZ archives
+    # must rebuild instead of crashing or silently changing relevance scores.
+    for expected_calls, payload in enumerate(
+        [
+            np.ones((cached_shape[0], cached_shape[1] + 1)),
+            np.ones(cached_shape, dtype=complex),
+            np.zeros(cached_shape),
+            "empty",
+            "archive",
+        ],
+        start=4,
+    ):
+        with cache.open("wb") as handle:
+            if isinstance(payload, str):
+                if payload == "archive":
+                    np.savez(handle, matrix=np.ones(cached_shape))
+            else:
+                np.save(handle, payload, allow_pickle=False)
+        assert engine.retrieve(architecture) == first
+        assert embedder.document_calls == expected_calls
+
+    # Invalid fresh provider output is an error, not cacheable relevance data.
+    monkeypatch.setattr(reranker, "predict", lambda pairs, **kw: [float("nan")] * len(pairs))
+    with pytest.raises(RuntimeError, match="invalid scores"):
+        engine.retrieve(architecture)
+    monkeypatch.setattr(reranker, "predict", lambda pairs, **kw: [])
+    with pytest.raises(RuntimeError, match="invalid scores"):
+        engine.retrieve(architecture)
+    monkeypatch.setattr(embedder, "encode", lambda texts, **kw: np.zeros((len(texts), 3)))
+    with pytest.raises(RuntimeError, match="invalid query vectors"):
+        engine.retrieve(architecture)
+
 
 @pytest.mark.parametrize(
     "case,expected",
@@ -203,3 +235,24 @@ def test_minimal_architecture_rules_survive_renamed_components(case, expected, t
     records = KnowledgeRetriever(backend="lexical", index_dir=tmp_path).retrieve(architecture)
     assert expected in {r["rule_id"] for r in records}
     assert architecture == before
+
+
+@pytest.mark.parametrize("value", [True, False, 1.5, "8", None, [], 0, -1])
+def test_invalid_top_k_is_rejected_at_construction(value):
+    with pytest.raises(ValueError, match="positive integer"):
+        KnowledgeRetriever(top_k=value)
+
+
+@pytest.mark.parametrize("value", [None, [], {}, "unknown"])
+def test_invalid_backend_is_rejected_at_construction(value):
+    with pytest.raises(ValueError, match="backend"):
+        KnowledgeRetriever(backend=value)
+
+
+def test_invalid_corpus_mode_is_rejected_instead_of_silently_dropping_rules(tmp_path):
+    kb = tmp_path / "kb"
+    shutil.copytree(ROOT / "kb", kb)
+    path = kb / "rules/application_services.md"
+    path.write_text(path.read_text().replace("Mode: all", "Mode: typo"))
+    with pytest.raises(RuntimeError, match="invalid record"):
+        KnowledgeRetriever(backend="lexical", kb_dir=kb, index_dir=tmp_path / "index").retrieve({})

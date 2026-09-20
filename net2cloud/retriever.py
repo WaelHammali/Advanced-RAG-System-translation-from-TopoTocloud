@@ -219,7 +219,11 @@ def _valid_records(records: Any) -> bool:
     ):
         return False
     ids = [record["rule_id"] for record in records]
-    return len(set(ids)) == len(ids) and set(CORE_RULE_IDS) <= set(ids)
+    return (
+        len(set(ids)) == len(ids)
+        and set(CORE_RULE_IDS) <= set(ids)
+        and all(record["mode"] in {"all", "behavioral_lab", "cloud_native"} for record in records)
+    )
 
 
 @lru_cache(maxsize=1)
@@ -247,10 +251,10 @@ class KnowledgeRetriever:
         backend: str = RETRIEVAL_BACKEND,
         top_k: int = TOP_K,
     ) -> None:
-        if backend not in {"hybrid", "lexical"}:
+        if not isinstance(backend, str) or backend not in {"hybrid", "lexical"}:
             raise ValueError("retrieval backend must be hybrid or lexical")
-        if top_k < 1:
-            raise ValueError("top_k must be positive")
+        if type(top_k) is not int or top_k < 1:
+            raise ValueError("top_k must be a positive integer")
         self.kb_dir = Path(kb_dir)
         self.index_dir = Path(index_dir)
         self.backend = backend
@@ -299,6 +303,8 @@ class KnowledgeRetriever:
             raise RuntimeError("Duplicate or split rule IDs in the knowledge corpus")
         if set(CORE_RULE_IDS) - set(ids):
             raise RuntimeError("The knowledge corpus is missing mandatory core rules")
+        if not _valid_records(records):
+            raise RuntimeError("The knowledge corpus contains invalid record fields or modes")
         write_json(cache, {"fingerprint": fingerprint, "records": records})
         return records, fingerprint
 
@@ -309,6 +315,8 @@ class KnowledgeRetriever:
         lexical_scores: list[float],
         fingerprint: str,
     ) -> list[int]:
+        from zipfile import BadZipFile
+
         import numpy as np
 
         embedder, reranker = _models()
@@ -319,6 +327,34 @@ class KnowledgeRetriever:
                 raise RuntimeError(
                     f"Knowledge record exceeds embedding token limit: {record['rule_id']}"
                 )
+        # Encode queries first so a cached document matrix can be checked against
+        # the actual model dimension, not just its row count.
+        windows = []
+        for query in queries:
+            ids = embedder.tokenizer.encode(query, add_special_tokens=False)
+            for start in range(0, len(ids), 160):
+                windows.append(embedder.tokenizer.decode(ids[start : start + 160]))
+
+        def valid_vectors(value, rows, columns=None):
+            return (
+                isinstance(value, np.ndarray)
+                and value.ndim == 2
+                and value.shape[0] == rows
+                and value.shape[1] > 0
+                and (columns is None or value.shape[1] == columns)
+                and np.issubdtype(value.dtype, np.floating)
+                and np.isfinite(value).all()
+                and np.all(np.any(value != 0, axis=1))
+            )
+
+        if not windows:
+            raise RuntimeError("Embedding tokenizer produced no query tokens")
+        query_vectors = embedder.encode(
+            windows, normalize_embeddings=True, show_progress_bar=False, convert_to_numpy=True
+        )
+        if not valid_vectors(query_vectors, len(windows)):
+            raise RuntimeError("Embedding model returned invalid query vectors")
+        dimension = query_vectors.shape[1]
         identity = _json(
             [fingerprint, EMBED_MODEL, EMBED_MAX_TOKENS, [record["rule_id"] for record in records]]
         )
@@ -326,37 +362,24 @@ class KnowledgeRetriever:
         cache = self.index_dir / f"embeddings-{cache_key}.npy"
         try:
             embeddings = np.load(cache, allow_pickle=False)
-            if (
-                embeddings.ndim != 2
-                or embeddings.shape[0] != len(records)
-                or embeddings.shape[1] == 0
-                or not np.issubdtype(embeddings.dtype, np.number)
-                or not np.isfinite(embeddings).all()
-            ):
+            if not isinstance(embeddings, np.ndarray):
+                embeddings.close()  # np.load can return an archive rather than an array.
+                raise ValueError("Expected one embedding array")
+            if not valid_vectors(embeddings, len(records), dimension):
                 raise ValueError("Invalid embedding cache dimensions")
-        except (OSError, ValueError):
+        except (OSError, ValueError, EOFError, BadZipFile):
             embeddings = embedder.encode(
                 texts,
                 normalize_embeddings=True,
                 show_progress_bar=False,
                 convert_to_numpy=True,
             )
+            if not valid_vectors(embeddings, len(records), dimension):
+                raise RuntimeError("Embedding model returned invalid document vectors")
             with atomic_path(cache) as temporary:
                 with temporary.open("wb") as handle:
                     np.save(handle, embeddings, allow_pickle=False)
 
-        # Token windows retain large JSON queries without truncating their tail.
-        windows = []
-        for query in queries:
-            ids = embedder.tokenizer.encode(query, add_special_tokens=False)
-            for start in range(0, len(ids), 160):
-                windows.append(embedder.tokenizer.decode(ids[start : start + 160]))
-        query_vectors = embedder.encode(
-            windows,
-            normalize_embeddings=True,
-            show_progress_bar=False,
-            convert_to_numpy=True,
-        )
         semantic_scores = (query_vectors @ embeddings.T).max(axis=0).tolist()
         # Reciprocal-rank fusion avoids mixing incompatible score scales.
         fused = [0.0] * len(records)
@@ -366,6 +389,13 @@ class KnowledgeRetriever:
         candidates = _rank(fused)[: max(self.top_k * 3, 16)]
         pairs = [[window, texts[index]] for index in candidates for window in windows]
         values = np.asarray(reranker.predict(pairs, show_progress_bar=False))
+        if (
+            values.size != len(pairs)
+            or not np.issubdtype(values.dtype, np.floating)
+            and not np.issubdtype(values.dtype, np.integer)
+            or not np.isfinite(values).all()
+        ):
+            raise RuntimeError("Reranker returned invalid scores")
         scores = values.reshape(len(candidates), len(windows)).max(axis=1)
         return [candidates[index] for index in _rank(scores.tolist())]
 

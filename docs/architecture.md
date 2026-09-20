@@ -30,14 +30,17 @@ Three core records are pinned. Other records are filtered by translation mode.
 Feature queries cover routing, services, declarative tasks, direct host links,
 switching and /31 or /32 prefixes without rewriting the source topology.
 
-`--top-k` is a target, not a hard budget: core rules and subject coverage may add
+`--top-k` must be a positive integer. It is a target, not a hard budget: core rules and subject coverage may add
 records. Long queries are windowed for embeddings; reranker truncation can still
 lose detail. These are relevance heuristics, not proof of complete coverage.
 
 Caches default to `.cache/net2cloud/`. Document identity includes sorted paths,
 content hashes, chunk size and retriever source. Embedding identity adds model
 name, token limit and record identity. Invalid caches are rebuilt. NumPy caches
-disable pickle loading. Model artifacts and versions are not pinned here.
+disable pickle loading. Cached vectors must be finite, real floating-point values,
+with nonzero rows and dimensions matching the current model's query vectors.
+Invalid fresh embeddings or reranker scores fail explicitly. Model artifacts and
+versions are not pinned here.
 
 ## Model boundary and limits
 

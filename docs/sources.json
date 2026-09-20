@@ -146,6 +146,13 @@
       "url": "https://nginx.org/en/docs/http/ngx_http_core_module.html",
       "title": "NGINX HTTP core module",
       "supports": "HTTP listen and document-root configuration."
+    },
+    {
+      "id": "RFC-P2P31",
+      "url": "https://www.rfc-editor.org/rfc/rfc3021",
+      "title": "RFC 3021: IPv4 /31 point-to-point links",
+      "supports": "Both addresses are host addresses on supporting point-to-point links.",
+      "reviewed_on": "2026-09-20"
     }
   ]
 }

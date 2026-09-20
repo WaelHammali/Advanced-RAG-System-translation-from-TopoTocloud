@@ -1,6 +1,6 @@
 # Knowledge retrieval and planning
 
-Corpus version: 2.2.0. The active pipeline is architecture JSON → deterministic
+Corpus version: 2.3.0. The active pipeline is architecture JSON → deterministic
 readiness check → retrieval → JSON plan. Discussion and downstream generation
 are separate. See the [JSON contract](JSON_CONTRACT.md) and [readiness rules](READINESS.md).
 
@@ -30,6 +30,9 @@ complete architecture JSON. Additional queries focus on component roles, routing
 settings, protocol names, service names and Ansible operations, without allowing
 matching example IP addresses to dominate those feature queries. This helps keep
 service requests alongside network requests.
+Direct host-to-host edges, switch roles and /31 or /32 interface prefixes add
+targeted queries for their boundary rules. These queries select context; they do
+not change topology or predict whether ping succeeds.
 There is no router-count boost or topology decision inside retrieval.
 
 The lexical backend uses BM25 and needs only the Python standard library. The
@@ -91,6 +94,8 @@ sections such as dialogue or generated files. Beyond the deterministic readiness
 gate, it does not validate full protocol configuration or nested plan semantics. The consumer checks
 whether its generator can implement the requested operations and references.
 The RAG cannot establish that a proposed plan will deploy or reproduce ping.
+The gate's known-field shape/reference checks live in `configuration_validation.py`;
+the [edge-case study](ARCHITECTURE_EDGE_CASES.md) states their scope and exceptions.
 
 ## Evaluation and maintenance
 

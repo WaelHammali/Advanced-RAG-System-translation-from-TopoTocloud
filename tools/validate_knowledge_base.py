@@ -16,7 +16,7 @@ from urllib.parse import unquote
 ROOT = Path(__file__).resolve().parents[1]
 KB = ROOT / "kb"
 MANIFEST = KB / "manifest.json"
-CORPUS_VERSION = "2.2.0"
+CORPUS_VERSION = "2.3.0"
 CORE = ["CORE-001", "CORE-002", "CORE-003"]
 FIELDS = {
     "Rule-ID",

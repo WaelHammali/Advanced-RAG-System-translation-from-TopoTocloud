@@ -177,3 +177,29 @@ def test_hybrid_windows_cache_and_reranking_without_model_download(tmp_path, mon
         np.save(handle, np.full(cached_shape, np.nan))
     assert engine.retrieve(architecture) == first
     assert embedder.document_calls == 3
+
+
+@pytest.mark.parametrize(
+    "case,expected",
+    [
+        ("two_pcs_direct", "EX-PC-DIRECT"),
+        ("two_pcs_31", "EX-PREFIX31"),
+        ("two_pcs_32", "EX-PREFIX31"),
+        ("switch_loop", "L2-003"),
+    ],
+)
+def test_minimal_architecture_rules_survive_renamed_components(case, expected, tmp_path):
+    raw = (ROOT / "examples/edge_cases" / (case + ".json")).read_text()
+    for old, new in [
+        ("PC1", "LaptopWest"),
+        ("PC2", "LaptopEast"),
+        ("SW1", "FabricA"),
+        ("SW2", "FabricB"),
+        ("SW3", "FabricC"),
+    ]:
+        raw = raw.replace(old, new)
+    architecture = json.loads(raw)
+    before = deepcopy(architecture)
+    records = KnowledgeRetriever(backend="lexical", index_dir=tmp_path).retrieve(architecture)
+    assert expected in {r["rule_id"] for r in records}
+    assert architecture == before

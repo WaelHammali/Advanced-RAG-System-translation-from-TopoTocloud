@@ -133,6 +133,10 @@ def _configuration_queries(architecture: dict[str, Any]) -> list[str]:
                         if isinstance(component, dict)
                     ]
                     queries.append("component mapping " + " ".join(dict.fromkeys(roles)))
+                    if "switch" in roles or "bridge" in roles:
+                        queries.append("switch chain bridge STP loop switching paths")
+                if subject == "ipv4" and isinstance(item, str) and item.endswith(("/31", "/32")):
+                    queries.append("point-to-point /31 /32 host route prefix")
                 if subject in {"routing", "protocols", "services", "ansible", "tasks"}:
                     entries = item if isinstance(item, list) else [item]
                     for entry in entries:
@@ -148,6 +152,28 @@ def _configuration_queries(architecture: dict[str, Any]) -> list[str]:
                 visit(item)
 
     visit(architecture)
+    components = architecture.get("components", [])
+    edges = architecture.get("edges", [])
+    if isinstance(components, list) and isinstance(edges, list):
+        hosts = {
+            node["id"]
+            for node in components
+            if isinstance(node, dict)
+            and isinstance(node.get("id"), str)
+            and node.get("type") in ("pc", "server")
+        }
+        for edge in edges:
+            if not isinstance(edge, dict):
+                continue
+            endpoints = [edge.get(side) for side in ("source", "target")]
+            if all(
+                isinstance(end, dict)
+                and isinstance(end.get("component"), str)
+                and end["component"] in hosts
+                for end in endpoints
+            ):
+                queries.append("two directly cabled PCs local traffic peer")
+                break
     return list(dict.fromkeys(queries))
 
 

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "corpus_version": "2.2.0",
+  "corpus_version": "2.3.0",
   "status": "target_specification",
   "default_mode": "behavioral_lab",
   "reviewed_on": "2026-09-17",
@@ -44,7 +44,7 @@
     },
     {
       "path": "kb/examples/direct_links.md",
-      "sha256": "ed15e90682c69c5a99d0ddb5bb95a76c7f315176e5cdf05d0d79e3d52df8b9b5"
+      "sha256": "61cd851977706b11301fdc3cb73fc3cc7b86aadb593579fb35e74b3ee50f454d"
     },
     {
       "path": "kb/examples/isolated.md",
@@ -96,7 +96,7 @@
     },
     {
       "path": "kb/input_contract.md",
-      "sha256": "ebc39aa3f8632bfce8e53eba5ca75d9bf4afad0a90ed1f053338a88fbfafc6de"
+      "sha256": "846fbaf62a0b00b1d6390a2963fc199e17b4f6efe0826b787934c0da53334708"
     },
     {
       "path": "kb/internet_patterns.md",
@@ -104,7 +104,7 @@
     },
     {
       "path": "kb/layer2_patterns.md",
-      "sha256": "c91cb405432d8b11daa7e8482867e320143fb76b5fa3a4cd583485e9780af2e7"
+      "sha256": "d09a2288341747c6aab9945b1eb520513526e4800eaeff1f19705bed9607069d"
     },
     {
       "path": "kb/mapping_rules.md",
@@ -390,6 +390,56 @@
       ]
     },
     {
+      "id": "EX-PC-DIRECT",
+      "path": "kb/examples/direct_links.md",
+      "title": "Two directly cabled PCs need no router for local traffic",
+      "kind": "example",
+      "mode": "behavioral_lab",
+      "characters": 892,
+      "sha256": "2057f6d30c859140501925d8f727d6081d54d653965e5c3cf8e5c93994f4509b",
+      "sources": [
+        "RFC-HOST",
+        "PROJECT"
+      ],
+      "related": [
+        "L2-001",
+        "ROUTE-001"
+      ]
+    },
+    {
+      "id": "EX-STANDALONE",
+      "path": "kb/examples/direct_links.md",
+      "title": "A standalone component is outside the current readiness policy",
+      "kind": "example",
+      "mode": "behavioral_lab",
+      "characters": 920,
+      "sha256": "3fbafef8f848cdd117bdc7f73f9d924feea6afe955d3dc6bcd560a69b67d5381",
+      "sources": [
+        "PROJECT"
+      ],
+      "related": [
+        "INPUT-001",
+        "EX-PC-DIRECT"
+      ]
+    },
+    {
+      "id": "EX-PREFIX31",
+      "path": "kb/examples/direct_links.md",
+      "title": "Point-to-point prefix boundaries must not trigger invented routing",
+      "kind": "example",
+      "mode": "behavioral_lab",
+      "characters": 952,
+      "sha256": "1e0580e0310cff4065ee61a155cc023f473d63990f467349597e6cd439e348fa",
+      "sources": [
+        "RFC-P2P31",
+        "PROJECT"
+      ],
+      "related": [
+        "EX-PC-DIRECT",
+        "ROUTE-001"
+      ]
+    },
+    {
       "id": "EX-ISOLATED",
       "path": "kb/examples/isolated.md",
       "title": "Disconnected router components must remain isolated",
@@ -587,8 +637,8 @@
       "title": "Consume architecture JSON without losing configuration",
       "kind": "rule",
       "mode": "all",
-      "characters": 1044,
-      "sha256": "106526dc0f6181c15937fcd65dfc83503f49f53d603285baa81743fa0099d08c",
+      "characters": 1055,
+      "sha256": "ac8c15ca6c6b277f2d3863cfa1c274c923bc50beb0a16b6b21d3c160d61b3f4b",
       "sources": [
         "PROJECT"
       ],
@@ -669,8 +719,8 @@
       "title": "Preserve switch ports and switching paths",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 756,
-      "sha256": "231af7eb509a9e850813f815f013998a92140e59bee29eac7b9df381af37b429",
+      "characters": 849,
+      "sha256": "d21d19f21ef74af54f2790e71438bd7bbfa67f4fb2389f994fc51eda2f5e6ab4",
       "sources": [
         "PROJECT",
         "LINUX-BRIDGE"

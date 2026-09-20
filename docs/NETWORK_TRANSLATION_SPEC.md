@@ -1,6 +1,6 @@
 # Real network to AWS: behavioral translation specification
 
-Version: 2.2.0 | Reviewed: 2026-09-19 | Status: target specification
+Version: 2.3.0 | Reviewed: 2026-09-20 | Status: target specification
 
 This specification defines behavior to preserve in a cloud/Ansible plan and
 implement in a separate generator. The active RAG consumes prepared architecture

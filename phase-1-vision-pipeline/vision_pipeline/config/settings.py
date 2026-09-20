@@ -44,8 +44,9 @@ class OcrSettings:
     min_confidence: float = 0.0
     #: image is upscaled by this factor before OCR; boxes are mapped back. 1.0 = off.
     upscale: float = 1.0
-    #: extra kwargs forwarded verbatim to the PaddleOCR constructor
-    paddle_kwargs: dict[str, Any] = field(default_factory=dict)
+    #: extra kwargs forwarded verbatim to the PaddleOCR constructor. oneDNN is off by default:
+    #: PaddlePaddle 3.3 crashes on CPU with it ("ConvertPirAttribute2RuntimeAttribute").
+    paddle_kwargs: dict[str, Any] = field(default_factory=lambda: {"enable_mkldnn": False})
 
 
 @dataclass

@@ -13,7 +13,7 @@ Anything not detected, ambiguous, or below a confidence threshold is `null` (sca
 ## Setup
 
 ```bash
-python3.11 -m venv .venv && source .venv/bin/activate     # 3.10-3.12 recommended for ultralytics/paddle wheels
+python3.13 -m venv .venv && source .venv/bin/activate     # 3.10-3.13 verified with ultralytics 8.4 / paddleocr 3.7
 pip install -r requirements.txt
 cp /path/to/your/weights.pt models/yolo/best.pt            # <- YOUR YOLO WEIGHTS GO HERE
 ```

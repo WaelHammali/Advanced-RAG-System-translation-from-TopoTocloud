@@ -166,9 +166,10 @@ every text or cable candidate that was not used appears in `unresolved` (topolog
 
 ## 12. Known limitations
 
-* **Not verified on real detectors.** ultralytics and PaddleOCR were not installable in the development environment (Python 3.14), so the YOLO and OCR
-  wrappers are tested against fakes of their documented output formats (Ultralytics `Results.boxes`, PaddleOCR 2.x and 3.x). The first real run may need
-  small adjustments. The end-to-end tests use the real OpenCV/fusion/topology code on a synthetic diagram.
+* **Real-model verification is partial.** Verified with real libraries (Python 3.13, ultralytics 8.4.157, paddleocr 3.7.0 / paddlepaddle 3.3.1): the
+  YOLO adapter loads the supplied `best.pt` (classes `desktop, firewall, router, server, switch`) and runs; the PaddleOCR adapter reads a synthetic
+  diagram; the OCR -> OpenCV -> fusion -> topology chain reproduces the expected topology. **Not** verified: YOLO detection quality on real diagrams
+  (the synthetic image has no real device icons, so it returned 0 detections) - that needs real diagrams.
 * **Thresholds are hand-set**, not calibrated on real diagrams. Tune them in the config using `fusion.json` (it records every score component).
 * PaddleOCR often drops tiny text such as `.1`; a missed suffix means that address stays `null`. `ocr.upscale` (e.g. 2.0) can help.
 * Cables: T-junction / bus / hub drawings become `branched` candidates with `null` endpoints and are **not** turned into links. Curved, dashed

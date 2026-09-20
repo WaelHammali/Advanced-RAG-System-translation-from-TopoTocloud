@@ -34,6 +34,7 @@ it does not deploy or make paid model calls.
 | --- | --- |
 | `app.py` | API orchestration, source preservation and CLI handling. |
 | `readiness.py` | Input completeness checks and structured readiness errors. |
+| `configuration_validation.py` | Known routing/service/Ansible field shapes, references and task dependency graphs. |
 | `planner.py` | Model request and response-envelope parsing. |
 | `prompts/planner.txt` | Planning instructions and expected JSON shape. |
 | `retriever.py` | Knowledge loading, caching, feature queries and ranking. |

@@ -3,8 +3,8 @@
 The caller supplies a JSON object and owns the conversation. The application now
 enforces [readiness prerequisites](READINESS.md) before translation: component
 identities, interfaces, usable link references and provided IPv4 addresses/prefixes.
-The fields below describe the broader contract; protocol/service semantics and
-generator capability checks remain separate.
+Known routing/service/Ansible shapes, scalar types and references are also checked.
+Protocol convergence, packet reachability and generator capability checks remain separate.
 See the complete [example](../examples/architecture.json).
 
 JSON parsing rejects duplicate object keys, NaN/Infinity and numbers exceeding
@@ -27,14 +27,17 @@ the CLI does not allow the input architecture path as its output path.
 | `components[].services` | Application protocol, implementation, enabled state, listener and service-specific settings. |
 | `edges` | Exact links with `source` and `target`, each naming `component` and `interface`; includes link `id` and enabled state. |
 | `ansible.connections` | Target IDs, connection settings and symbolic management/credential references. |
-| `ansible.tasks` | Task ID, `target_ids`, module or `operation`, `parameters`, and `depends_on`. |
+| `ansible.tasks` | Unique task ID, existing `target_ids`, named `operation`, object `parameters`, and acyclic `depends_on`. |
 
 For static routing, an entry can specify `destination`, `via`, `interface` and
 `metric`. For RIP, a protocol entry can specify `name: "rip"`, `enabled`,
 `version: 2`, and participating interfaces with their passive settings. The
 example shows explicit OSPF areas, router IDs and point-to-point/passive interfaces.
-These are instructions to preserve supplied settings, including deliberately
-incorrect settings; the RAG does not decide whether the input fields are valid.
+The deterministic gate checks these known fields before the model call; see
+[readiness](READINESS.md). Syntactically complete settings that cause connectivity
+failure, such as mismatched OSPF areas or absent return routes, remain unchanged.
+Static destinations require canonical network prefixes, while interface addresses
+carry the host address and prefix. The checker never silently normalizes either.
 
 HTTP/HTTPS belong under the server's services; OSPF/RIP belong under routing.
 The planner covers both in the same response. Explicit custom Ansible operations

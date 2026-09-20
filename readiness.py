@@ -1,14 +1,16 @@
 """Deterministic architecture completeness checks before retrieval or translation.
 
-Readiness is about named, connected and addressed input. It does not predict
-reachability, repair configuration or decide which generator supports a feature.
+Readiness checks names, links, addresses and known configuration shapes/references.
+It does not predict reachability, repair settings or decide generator support.
 """
 
 from __future__ import annotations
 
 import ipaddress
+import math
 from typing import Any
 
+from configuration_validation import validate_configuration
 from contracts import JSONObject
 
 
@@ -18,6 +20,53 @@ class ArchitectureNotReady(ValueError):
     def __init__(self, report: JSONObject) -> None:
         self.report = report
         super().__init__(f"Architecture is not ready: {len(report['errors'])} issue(s).")
+
+
+def _json_errors(value: Any) -> list[dict[str, str]]:
+    """Bound nesting and reject Python-only values at the direct API boundary."""
+    errors = []
+    pending = [(value, "", frozenset())]
+    while pending:
+        item, path, ancestors = pending.pop()
+        if len(ancestors) > 64 or (isinstance(item, (dict, list)) and id(item) in ancestors):
+            errors.append(
+                {
+                    "code": "json_nesting_limit",
+                    "path": path,
+                    "message": "JSON nesting must not exceed 64 levels; cycles are invalid.",
+                }
+            )
+        elif isinstance(item, dict):
+            for key, child in item.items():
+                if not isinstance(key, str):
+                    errors.append(
+                        {
+                            "code": "invalid_json_key",
+                            "path": path,
+                            "message": "JSON object keys must be strings.",
+                        }
+                    )
+                else:
+                    escaped = key.replace("~", "~0").replace("/", "~1")
+                    pending.append((child, path + "/" + escaped, ancestors | {id(item)}))
+        elif isinstance(item, list):
+            pending.extend(
+                (child, f"{path}/{index}", ancestors | {id(item)})
+                for index, child in enumerate(item)
+            )
+        elif not (
+            item is None
+            or type(item) in (str, bool, int)
+            or (type(item) is float and math.isfinite(item))
+        ):
+            errors.append(
+                {
+                    "code": "invalid_json_value",
+                    "path": path,
+                    "message": "Use JSON values with finite numbers only.",
+                }
+            )
+    return errors
 
 
 def check_readiness(architecture: Any) -> JSONObject:
@@ -35,6 +84,9 @@ def check_readiness(architecture: Any) -> JSONObject:
 
     if not isinstance(architecture, dict):
         error("invalid_architecture", "", "The architecture must be a JSON object.")
+        return result()
+    errors.extend(_json_errors(architecture))
+    if errors:
         return result()
     components = architecture.get("components")
     if not isinstance(components, list) or not components:
@@ -112,7 +164,15 @@ def check_readiness(architecture: Any) -> JSONObject:
                     "enabled must be true or false.",
                 )
             address = port.get("ipv4")
-            if address is None and layer2:
+            if "access_vlan" in port and (
+                type(port["access_vlan"]) is not int or not 1 <= port["access_vlan"] <= 4094
+            ):
+                error(
+                    "invalid_vlan",
+                    port_path + "/access_vlan",
+                    "Use an integer VLAN ID from 1 to 4094.",
+                )
+            if "ipv4" not in port and layer2:
                 continue
             if not named(address):
                 error(
@@ -207,6 +267,7 @@ def check_readiness(architecture: Any) -> JSONObject:
                 path,
                 f"Component {identifier!r} has no valid link to another component.",
             )
+    validate_configuration(architecture, interfaces, error)
     return result()
 
 

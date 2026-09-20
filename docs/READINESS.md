@@ -2,6 +2,8 @@
 
 `readiness.py` checks the source architecture before retrieval, model creation or
 translation. It never modifies the JSON, fills missing values or calls an LLM.
+It validates known routing/service/Ansible field shapes as well as the graph.
+See the [architecture boundary study](ARCHITECTURE_EDGE_CASES.md) for the case matrix.
 
 ```bash
 python app.py check --input examples/architecture.json
@@ -44,6 +46,24 @@ application can show them to the user, complete the JSON and resubmit it.
   self-loop does not satisfy this requirement. A typo or dangling edge does not
   make an isolated component ready.
 - Interface/edge `enabled`, when supplied, is a Boolean.
+- Optional `access_vlan` values are integers 1–4094. An omitted switch IP is valid;
+  an explicitly supplied null address is not.
+- Supplied routing, services and Ansible sections must have their documented
+  object/list shapes. Known Boolean and numeric fields are checked without coercion.
+- Gateway/static-route and RIP/OSPF interface references must exist on that device.
+  Static destinations use canonical network prefixes (no host bits). OSPF requires
+  a router ID, interface list and area on each listed interface; RIP requires a
+  version and interface list. Empty interface lists represent no participation.
+- Supplied service listeners require an integer port 1–65535 and a valid IPv4
+  address when an address is supplied. Services require a nonempty protocol name.
+- Ansible tasks have unique IDs, named operations, object parameters, existing
+  target IDs and acyclic dependencies on existing task IDs. Forward references
+  are allowed. Connection target IDs are checked too.
+- If present, `schema_version` is `"1.0"` and `translation_mode` is `behavioral_lab`
+  or `cloud_native`. Known metadata fields must have the documented types.
+- All values must be JSON-compatible, with finite numbers, string object keys,
+  no reference cycles and at most 64 levels of nesting. JSON Pointer errors escape
+  `/` and `~` in extension keys.
 
 ## Completeness is different from working connectivity
 
@@ -51,13 +71,20 @@ An explicit disabled cable still connects the objects structurally, so it is
 retained as a failure exercise. Empty static-route lists, disabled protocols,
 OSPF mismatches and absent optional gateways are not automatically repaired or
 rejected by this check. Two same-LAN hosts do not need a gateway.
+Disabled sections must still be well-formed. Single-device architectures are
+rejected under the explicit no-isolated-components policy; two directly cabled
+PCs are accepted without a router or switch.
 
 Separate connected groups are permitted as long as no individual component is
 alone. The gate does not require all components to reach each other. It does not
 check address uniqueness within VLANs, route feasibility, protocol convergence,
 service readiness, generator support or cloud limits. Additional unused but
 addressed interfaces are permitted by this input gate; a generator may impose
-stricter interface/link requirements.
+stricter interface/link requirements. Unknown protocol names and custom extension
+fields are preserved; their specific semantics are not declared valid by this gate.
+Interface address checking remains syntactic: special-address semantics and
+same-segment address conflicts are not checked. The generator additionally rejects
+active switch/VLAN cycles because its current runtime does not implement STP.
 
 These limits are deliberate: passing readiness means the requested identity,
 addressing and link prerequisites are complete. It does not mean ping will pass
@@ -69,6 +96,8 @@ or a generator can deploy every feature.
 `ArchitectureNotReady` exposes its machine-readable `report`. The application
 checks before constructing retrieval; the planner also checks direct calls before
 constructing a provider client. There is no bypass flag.
+Both artifact generators repeat source readiness checks for hand-written plans;
+passing directly to a generator cannot bypass the gate.
 
 `plan` and `context` exit with status 2 and write the report to stderr if input is
 not ready. No new plan/context output file is published; an existing file is left

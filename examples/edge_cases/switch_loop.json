@@ -1,76 +1,53 @@
 {
-  "schema_version": "1.0",
-  "translation_mode": "behavioral_lab",
-  "components": [
+  "devices": [
     {
-      "id": "SW1",
+      "id": "device_1",
       "type": "switch",
-      "interfaces": [
-        {
-          "id": "p1"
-        },
-        {
-          "id": "p2"
-        }
-      ]
+      "name": "SW1",
+      "network": {"ip_address": null, "prefix_length": null, "subnet_mask": null, "network_address": null}
     },
     {
-      "id": "SW2",
+      "id": "device_2",
       "type": "switch",
-      "interfaces": [
-        {
-          "id": "p1"
-        },
-        {
-          "id": "p2"
-        }
-      ]
+      "name": "SW2",
+      "network": {"ip_address": null, "prefix_length": null, "subnet_mask": null, "network_address": null}
     },
     {
-      "id": "SW3",
+      "id": "device_3",
       "type": "switch",
-      "interfaces": [
-        {
-          "id": "p1"
-        },
-        {
-          "id": "p2"
-        }
-      ]
+      "name": "SW3",
+      "network": {"ip_address": null, "prefix_length": null, "subnet_mask": null, "network_address": null}
     }
   ],
-  "edges": [
+  "links": [
     {
-      "id": "a",
-      "source": {
-        "component": "SW1",
-        "interface": "p1"
-      },
-      "target": {
-        "component": "SW2",
-        "interface": "p1"
+      "id": "link_1",
+      "source": "device_1",
+      "target": "device_2",
+      "network": {
+        "network_address": "192.168.100.0",
+        "prefix_length": 24,
+        "subnet_mask": "255.255.255.0"
       }
     },
     {
-      "id": "b",
-      "source": {
-        "component": "SW2",
-        "interface": "p2"
-      },
-      "target": {
-        "component": "SW3",
-        "interface": "p1"
+      "id": "link_2",
+      "source": "device_2",
+      "target": "device_3",
+      "network": {
+        "network_address": "192.168.100.0",
+        "prefix_length": 24,
+        "subnet_mask": "255.255.255.0"
       }
     },
     {
-      "id": "c",
-      "source": {
-        "component": "SW3",
-        "interface": "p2"
-      },
-      "target": {
-        "component": "SW1",
-        "interface": "p2"
+      "id": "link_3",
+      "source": "device_3",
+      "target": "device_1",
+      "network": {
+        "network_address": "192.168.100.0",
+        "prefix_length": 24,
+        "subnet_mask": "255.255.255.0"
       }
     }
   ]

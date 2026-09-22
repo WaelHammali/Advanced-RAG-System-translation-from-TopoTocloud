@@ -1,4 +1,4 @@
-"""The issue list is (component, other component or "", message) and changes nothing."""
+"""The issue list is (device, other device or "", message) and changes nothing."""
 
 import json
 from copy import deepcopy
@@ -22,124 +22,156 @@ def test_a_complete_architecture_has_no_issues(architecture):
 
 
 def test_every_issue_is_a_triple_of_strings(architecture):
-    del architecture["components"][0]["interfaces"][0]["ipv4"]
-    architecture["components"].append({"id": "Alone", "type": "pc", "interfaces": [{"id": "e"}]})
+    architecture["devices"][0]["network"]["ip_address"] = None
+    architecture["devices"].append({"id": "Alone", "type": "pc", "name": "Alone"})
     issues = list_issues(architecture)
     assert issues and all(len(i) == 3 and all(isinstance(x, str) for x in i) for i in issues)
 
 
-def test_missing_address_mask_and_invalid_address(architecture):
-    ports = {c["id"]: c["interfaces"] for c in architecture["components"]}
-    del ports["PC1"][0]["ipv4"]
-    ports["R1"][0]["ipv4"] = "10.10.10.1"
-    ports["R2"][0]["ipv4"] = "999.1.1.1/24"
+def test_missing_address_and_invalid_address(architecture):
+    architecture["devices"][0]["network"]["ip_address"] = None
+    architecture["devices"][2]["network"]["ip_address"] = "999.1.1.1"
+    issues = list_issues(architecture)
+    assert ("PC1", "", "no IP address") in issues
+    assert ("R1", "", "invalid IP address") in issues
+
+
+def test_a_device_with_no_link_is_reported_alone():
+    architecture = {
+        "devices": [
+            {
+                "id": "d1",
+                "type": "pc",
+                "name": "Alone",
+                "network": {
+                    "ip_address": "10.9.0.2",
+                    "prefix_length": 24,
+                    "subnet_mask": "255.255.255.0",
+                    "network_address": "10.9.0.0",
+                },
+            }
+        ],
+        "links": [],
+    }
     assert list_issues(architecture) == [
-        ("PC1", "", "no IP address"),
-        ("R1", "", "IP address has no mask"),
-        ("R2", "", "invalid IP address"),
+        ("", "", "Provide links connecting the devices."),
+        ("Alone", "", "not linked to any other device"),
     ]
 
 
-def test_a_component_with_no_link_is_reported_alone(architecture):
-    architecture["components"].append(
-        {"id": "Alone", "type": "pc", "interfaces": [{"id": "eth0", "ipv4": "10.9.0.2/24"}]}
-    )
-    assert list_issues(architecture) == [("Alone", "", "not linked to any other component")]
+def test_a_shared_id_names_both_sides(architecture):
+    architecture["devices"][1]["id"] = architecture["devices"][0]["id"]
+    issues = list_issues(architecture)
+    assert ("SW1", "SW1", "same ID as another device") in issues
 
 
-def test_a_shared_name_names_both_sides(architecture):
-    architecture["components"][1]["id"] = "PC1"
-    assert ("PC1", "PC1", "same name as another component") in list_issues(architecture)
-
-
-def test_the_same_address_in_one_group_names_both_components(architecture):
-    architecture["components"][0]["interfaces"][0]["ipv4"] = "10.20.20.30/24"  # WEB1's address
-    assert list_issues(architecture) == [("WEB1", "PC1", "same IP address as PC1")]
+def test_the_same_address_in_one_group_names_both_devices(architecture):
+    # PC1 (device_1, listed first) takes SRV1's (device_4, listed later) address;
+    # the later device in list order is the one named as having the clash.
+    architecture["devices"][0]["network"]["ip_address"] = "192.168.1.20"
+    architecture["devices"][0]["network"]["network_address"] = "192.168.1.0"
+    issues = list_issues(architecture)
+    assert ("SRV1", "PC1", "same IP address as PC1") in issues
     assert check_readiness(architecture)["ready"]  # reported, but never blocks translation
 
 
-def test_the_same_address_on_two_interfaces_of_one_component(architecture):
-    router = architecture["components"][2]
-    router["interfaces"][1]["ipv4"] = router["interfaces"][0]["ipv4"]
-    assert list_issues(architecture) == [("R1", "R1", "same IP address as R1")]
-
-
-def test_separate_groups_and_disabled_interfaces_may_reuse_addresses():
-    def pair(a, b, address):
-        cable = {
-            "id": f"{a}-{b}",
-            "source": {"component": a, "interface": "eth0"},
-            "target": {"component": b, "interface": "eth0"},
-        }
-        hosts = [
-            {"id": n, "type": "pc", "interfaces": [{"id": "eth0", "ipv4": f"{address}{i}/24"}]}
+def test_separate_groups_may_reuse_addresses():
+    def pair(a, b, prefix):
+        devices = [
+            {
+                "id": n,
+                "type": "pc",
+                "name": n,
+                "network": {
+                    "ip_address": f"{prefix}{i}",
+                    "prefix_length": 24,
+                    "subnet_mask": "255.255.255.0",
+                    "network_address": f"{prefix}0",
+                },
+            }
             for i, n in enumerate((a, b), 1)
         ]
-        return hosts, cable
+        link = {
+            "id": f"{a}-{b}",
+            "source": a,
+            "target": b,
+            "network": {
+                "network_address": f"{prefix}0",
+                "prefix_length": 24,
+                "subnet_mask": "255.255.255.0",
+            },
+        }
+        return devices, link
 
     (a, b), first = pair("A", "B", "10.0.0.")
     (c, d), second = pair("C", "D", "10.0.0.")
-    separate = {"components": [a, b, c, d], "edges": [first, second]}
+    separate = {"devices": [a, b, c, d], "links": [first, second]}
     assert list_issues(separate) == []
-    joined = deepcopy(separate)
-    joined["edges"].append(
-        {
-            "id": "bridge",
-            "source": {"component": "B", "interface": "eth1"},
-            "target": {"component": "C", "interface": "eth1"},
-        }
-    )
-    joined["components"][1]["interfaces"].append({"id": "eth1", "ipv4": "10.1.0.1/24"})
-    joined["components"][2]["interfaces"].append({"id": "eth1", "ipv4": "10.1.0.2/24"})
-    assert ("C", "A", "same IP address as A") in list_issues(joined)
-    joined["components"][2]["interfaces"][0]["enabled"] = False
-    assert ("C", "A", "same IP address as A") not in list_issues(joined)
 
 
-def test_nameless_components_are_named_by_position_and_links_by_id(architecture):
-    del architecture["components"][0]["id"]
-    architecture["edges"][2]["source"]["component"] = "ghost"
+def test_nameless_device_falls_back_to_id_and_unknown_link_names_the_link(architecture):
+    del architecture["devices"][0]["name"]
+    architecture["devices"][0]["network"]["ip_address"] = None
+    architecture["links"][1]["source"] = "ghost"
     issues = list_issues(architecture)
-    assert ("components[0]", "", "has no name") in issues
-    assert ("link-3", "", "link source points to unknown component 'ghost'") in issues
+    assert ("device_1", "", "no IP address") in issues  # name absent, falls back to id
+    assert ("link_2", "", "link source points to unknown device 'ghost'") in issues
 
 
-def test_problems_that_belong_to_no_component_have_an_empty_name():
-    assert list_issues({"components": [], "edges": []})[0] == (
+def test_problems_that_belong_to_no_device_have_an_empty_name():
+    assert list_issues({"devices": [], "links": []})[0] == (
         "",
         "",
-        "Provide a nonempty list of components.",
+        "Provide a nonempty list of devices.",
     )
     assert list_issues(None) == [("", "", "The architecture must be a JSON object.")]
 
 
 def test_the_architecture_is_never_changed(architecture):
-    del architecture["components"][0]["interfaces"][0]["ipv4"]
+    architecture["devices"][0]["network"]["ip_address"] = None
     before = deepcopy(architecture)
     list_issues(architecture)
     assert architecture == before
 
 
-def test_problems_outside_components_keep_their_location(architecture):
-    architecture["automation"] = {
-        "tasks": [{"id": "t1", "targets": ["ghost"], "operation": "package.install"}]
+def test_link_endpoint_subnet_mismatch_names_the_mismatched_device(architecture):
+    architecture["links"][1]["network"] = {
+        "network_address": "172.16.0.0",
+        "prefix_length": 30,
+        "subnet_mask": "255.255.255.252",
     }
-    located = [i for i in list_issues(architecture) if i[0] == "" and "/automation" in i[2]]
-    assert located and all(i[1] == "" for i in located)
+    issues = list_issues(architecture)
+    assert (
+        "R1",
+        "",
+        "a connected device's address is outside this link's network",
+    ) in issues
 
 
-@pytest.mark.parametrize("mask", ["-1", "-24", "33", "64", "abc", "", "24.5"])
-def test_a_negative_too_large_or_non_numeric_mask_is_an_invalid_mask(architecture, mask):
-    architecture["components"][0]["interfaces"][0]["ipv4"] = f"10.10.10.10/{mask}"
-    assert ("PC1", "", "invalid mask") in list_issues(architecture)
+@pytest.mark.parametrize(
+    "prefix,message",
+    [(-1, "invalid mask"), (33, "invalid mask"), ("abc", "invalid mask"), (None, "IP address has no mask")],
+)
+def test_an_invalid_prefix_length_is_reported(architecture, prefix, message):
+    architecture["devices"][0]["network"]["prefix_length"] = prefix
+    assert ("PC1", "", message) in list_issues(architecture)
 
 
-@pytest.mark.parametrize("mask", ["0", "8", "24", "30", "31", "32"])
-def test_masks_from_zero_to_thirty_two_are_accepted(architecture, mask):
-    architecture["components"][0]["interfaces"][0]["ipv4"] = f"10.10.10.10/{mask}"
+@pytest.mark.parametrize("prefix", [0, 8, 24, 30, 31, 32])
+def test_prefixes_from_zero_to_thirty_two_are_accepted(architecture, prefix):
+    import ipaddress
+
+    network = ipaddress.IPv4Network(f"192.168.1.10/{prefix}", strict=False)
+    architecture["devices"][0]["network"] = {
+        "ip_address": "192.168.1.10",
+        "prefix_length": prefix,
+        "subnet_mask": str(network.netmask),
+        "network_address": str(network.network_address),
+    }
+    # This device's only link (link_1) must still agree with the new network.
+    architecture["links"][0]["network"] = {
+        "network_address": str(network.network_address),
+        "prefix_length": prefix,
+        "subnet_mask": str(network.netmask),
+    }
     assert not [i for i in list_issues(architecture) if i[0] == "PC1"]
-
-
-def test_a_bad_address_is_reported_as_the_address_not_the_mask(architecture):
-    architecture["components"][0]["interfaces"][0]["ipv4"] = "10.10.10.999/33"
-    assert ("PC1", "", "invalid IP address") in list_issues(architecture)

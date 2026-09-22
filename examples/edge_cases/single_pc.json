@@ -1,17 +1,16 @@
 {
-  "schema_version": "1.0",
-  "translation_mode": "behavioral_lab",
-  "components": [
+  "devices": [
     {
-      "id": "PC1",
+      "id": "device_1",
       "type": "pc",
-      "interfaces": [
-        {
-          "id": "eth0",
-          "ipv4": "10.0.0.1/24"
-        }
-      ]
+      "name": "PC1",
+      "network": {
+        "ip_address": "10.0.0.1",
+        "prefix_length": 24,
+        "subnet_mask": "255.255.255.0",
+        "network_address": "10.0.0.0"
+      }
     }
   ],
-  "edges": []
+  "links": []
 }

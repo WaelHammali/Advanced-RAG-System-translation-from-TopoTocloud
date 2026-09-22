@@ -1,7 +1,6 @@
 {
   "cloud_plan": {
     "provider": "aws",
-    "translation_mode": "behavioral_lab",
     "resources": [
       {
         "id": "lab_worker",
@@ -10,26 +9,26 @@
         "capacity": "requires workload sizing"
       }
     ],
-    "component_mapping": [
+    "device_mapping": [
       {
-        "component_id": "PC1",
+        "device_id": "device_1",
         "role": "pc",
         "cloud_representation": "isolated_network_namespace",
         "resource_ref": "lab_worker",
         "configuration": {
-          "source_component_id": "PC1"
+          "source_device_id": "device_1"
         },
         "rule_ids": [
           "BACKEND-001"
         ]
       },
       {
-        "component_id": "PC2",
+        "device_id": "device_2",
         "role": "pc",
         "cloud_representation": "isolated_network_namespace",
         "resource_ref": "lab_worker",
         "configuration": {
-          "source_component_id": "PC2"
+          "source_device_id": "device_2"
         },
         "rule_ids": [
           "BACKEND-001"
@@ -39,47 +38,24 @@
     "networking": {
       "links": [
         {
-          "source_edge_id": "cable",
+          "source_link_id": "link_1",
           "implementation": "veth",
           "resource_ref": "lab_worker"
         }
       ],
       "addressing": [
         {
-          "component_id": "PC1",
-          "interfaces": [
-            {
-              "id": "eth0",
-              "ipv4": "10.0.0.1/24"
-            }
-          ]
+          "device_id": "device_1",
+          "ip_address": "10.0.0.1",
+          "prefix_length": 24
         },
         {
-          "component_id": "PC2",
-          "interfaces": [
-            {
-              "id": "eth0",
-              "ipv4": "10.0.0.2/24"
-            }
-          ]
+          "device_id": "device_2",
+          "ip_address": "10.0.0.2",
+          "prefix_length": 24
         }
       ],
-      "routing": [],
       "security": []
-    },
-    "configuration": {
-      "targets": [
-        {
-          "component_id": "PC1",
-          "resource_ref": "lab_worker"
-        },
-        {
-          "component_id": "PC2",
-          "resource_ref": "lab_worker"
-        }
-      ],
-      "tasks": [],
-      "services": []
     },
     "dependencies": [
       "An external runtime must realize the isolated stacks and exact source cable."
@@ -93,40 +69,39 @@
     "Illustrative hand-authored plan; capacity, management access and live connectivity are not verified."
   ],
   "architecture": {
-    "schema_version": "1.0",
-    "translation_mode": "behavioral_lab",
-    "components": [
+    "devices": [
       {
-        "id": "PC1",
+        "id": "device_1",
         "type": "pc",
-        "interfaces": [
-          {
-            "id": "eth0",
-            "ipv4": "10.0.0.1/24"
-          }
-        ]
+        "name": "PC1",
+        "network": {
+          "ip_address": "10.0.0.1",
+          "prefix_length": 24,
+          "subnet_mask": "255.255.255.0",
+          "network_address": "10.0.0.0"
+        }
       },
       {
-        "id": "PC2",
+        "id": "device_2",
         "type": "pc",
-        "interfaces": [
-          {
-            "id": "eth0",
-            "ipv4": "10.0.0.2/24"
-          }
-        ]
+        "name": "PC2",
+        "network": {
+          "ip_address": "10.0.0.2",
+          "prefix_length": 24,
+          "subnet_mask": "255.255.255.0",
+          "network_address": "10.0.0.0"
+        }
       }
     ],
-    "edges": [
+    "links": [
       {
-        "id": "cable",
-        "source": {
-          "component": "PC1",
-          "interface": "eth0"
-        },
-        "target": {
-          "component": "PC2",
-          "interface": "eth0"
+        "id": "link_1",
+        "source": "device_1",
+        "target": "device_2",
+        "network": {
+          "network_address": "10.0.0.0",
+          "prefix_length": 24,
+          "subnet_mask": "255.255.255.0"
         }
       }
     ]

@@ -1,35 +1,32 @@
-# Architecture input and AWS JSON output
+# Topology input and AWS JSON output
 
 The caller owns discussion and supplies a prepared JSON object. This application
 checks readiness, retrieves knowledge and returns a proposed AWS architecture.
-[examples/architecture.json](../examples/architecture.json) shows a mixed network
-with PCs, switches, two OSPF routers, an HTTP server and a declarative package task.
+[examples/architecture.json](../examples/architecture.json) shows a small LAN
+with PCs, a switch, a router and a server.
 
 ## Input
 
+The input has exactly two top-level lists: `devices` and `links`. There is no
+routing, service or automation configuration, no VLANs and no NAT/DHCP — the
+upstream vision pipeline that produces this JSON cannot detect any of that from
+a topology diagram, so the contract does not carry it.
+
 | Field | Meaning |
 | --- | --- |
-| `schema_version` | Optional string `1.0`; other versions are rejected. |
-| `translation_mode` | `behavioral_lab` (default) or `cloud_native`; both target AWS. |
-| `cloud` | Optional object; supplied `provider` must be `aws`; `region` is optional. |
-| `components` | Nonempty device list with unique canonical `id`, type and interfaces. |
-| `components[].name` | Optional nonempty display name; IDs remain authoritative. |
-| `components[].interfaces` | Interface ID, IPv4/prefix, enabled state and optional VLAN settings. |
-| `components[].routing` | Forwarding, default gateway, static routes, routing protocols. |
-| `components[].services` | Protocol, implementation, enabled state, listener and service settings. |
-| `edges` | Named cables with exact source and target component/interface references. |
-| `automation.connections` | Optional declarative target access settings and symbolic secret references. |
-| `automation.tasks` | ID, target IDs, operation, object parameters and dependency IDs. |
+| `devices` | Nonempty list; each device has a unique `id`, a nonempty `name`, a nonempty `type` (such as `pc`, `router`, `server` or `switch`) and a `network` object. |
+| `devices[].network` | `ip_address`, `prefix_length` (0–32), `subnet_mask` and `network_address`. All four must be present and mutually consistent for every device except `switch`/`bridge`/`hub`, which may leave all four `null`. |
+| `links` | Nonempty list; each link has a unique `id`, a `source` and `target` (existing device `id`s, not names) and its own `network` object. |
+| `links[].network` | `network_address`, `prefix_length` and `subnet_mask`. Always required, and must be internally consistent and agree with the address of any non-switch device at either end. |
 
-See [validation](validation.md) for required types, references and rejection rules.
-Empty lists, disabled settings and omitted configuration are distinct. Do not
-substitute a routing protocol when the source contains no remote routes. Unknown
-extension values remain attached to the source and must be described as unresolved
-if their implementation is not understood.
+A device has no ports or interfaces of its own — its single `network` object
+(or `null`, for a switch/bridge/hub) is the only address it can carry, no
+matter how many links it has. A `pc` may have exactly one link; every other
+type may have any number.
 
-Automation operations are declarative names, such as `package.install`; the RAG
-neither resolves modules nor executes them. HTTP remains a service on its source
-server; OSPF and RIP remain routing configuration on their source devices.
+See [validation](validation.md) for the exact required fields and rejection rules.
+Unknown extension fields are preserved unchanged; passing readiness does not
+imply their schema is recognized or implemented.
 
 ## Output
 
@@ -39,11 +36,9 @@ The model returns these three top-level sections:
 {
   "cloud_plan": {
     "provider": "aws",
-    "translation_mode": "behavioral_lab",
     "resources": [],
-    "component_mapping": [],
-    "networking": {"links": [], "addressing": [], "routing": [], "security": []},
-    "configuration": {"targets": [], "tasks": [], "services": []},
+    "device_mapping": [],
+    "networking": {"links": [], "addressing": [], "security": []},
     "dependencies": []
   },
   "rule_ids": [],
@@ -56,12 +51,12 @@ The empty arrays show shape, not a complete plan. The application then attaches:
 - `architecture`: a deep copy of the original input, never reconstructed by the model.
 - `knowledge`: selected rule IDs, source paths and headings for provenance.
 
-AWS resources use stable symbolic IDs and types. Component mappings refer to exact
-source IDs and proposed resource IDs. The original network graph and AWS hosting
-relationships are distinct: hosting two devices together does not connect their
-lab interfaces. Configuration requirements stay under `cloud_plan.configuration`.
-Unresolved capacities, mappings, runtime capabilities or source semantics belong
-in `limitations` and dependencies. No deployment status or observed ping is implied.
+AWS resources use stable symbolic IDs and types. Device mappings refer to exact
+source device IDs and proposed resource IDs. The original network graph and AWS
+hosting relationships are distinct: hosting two devices together does not
+connect their lab links. Unresolved capacities, mappings, runtime capabilities
+or source semantics belong in `limitations` and dependencies. No deployment
+status or observed ping is implied.
 
 [examples/aws_plan.json](../examples/aws_plan.json) is a hand-authored illustration
 for the directly connected PC input, not live Groq output or a deployable template.
@@ -80,10 +75,12 @@ Malformed, duplicate-key, non-finite, empty or truncated JSON fails. On failure 
 new plan is published and an existing output file remains unchanged. Input and
 output paths cannot be the same. See the CLI exit statuses in the root README.
 
-## Migration from the former combined project
+## Migration from the former combined-configuration contract
 
-There is no `ansible_plan`, `terraform_plan` or generated-files section. Move source
-`ansible` settings to the declarative `automation` section and remove `generation`
-profiles. These old input fields are rejected with explicit migration errors.
-External tools may consume the AWS JSON later; no generator contract is maintained
-inside this translation repository. Historical code remains in Git history.
+There is no `components`/`edges`/`interfaces` layout, and no `routing`, `services`,
+`automation`, `os`, `cloud` or `schema_version` sections. A device's address lives
+directly on its `network` object, and per-link identity comes from the link's own
+`id`, not from a named interface. These old input fields have no equivalent in
+this contract; a caller migrating from the former layout must convert to
+`devices`/`links` before calling this application. Historical code remains in
+Git history.

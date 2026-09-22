@@ -8,9 +8,9 @@ rendering, device configuration or network probes.
 
 1. `net2cloud/json_io.py` reads strict JSON: duplicate keys and non-finite numbers
    are rejected. JSON output uses atomic replacement.
-2. `readiness.py` checks identities, addressing and graph references;
-   `configuration_validation.py` checks known nested fields and task dependencies.
-   Invalid input never reaches retrieval or Groq. See [validation](validation.md).
+2. `readiness.py` checks device/link identities, per-device and per-link
+   addressing, and graph references. Invalid input never reaches retrieval
+   or Groq. See [validation](validation.md).
 3. `retriever.py` reads only the rule cards and examples under `kb/`. It selects
    relevant network and AWS knowledge and attaches stable rule IDs.
 4. `planner.py` sends the source architecture and selected records to Groq. The
@@ -27,8 +27,9 @@ can be injected for testing; no live model is needed for the regression suite.
 Lexical retrieval uses BM25. Hybrid retrieval combines BM25 with sentence-transformer
 embeddings using reciprocal-rank fusion, then applies cross-encoder reranking.
 Three core records are pinned. Other records are filtered by translation mode.
-Feature queries cover routing, services, declarative tasks, direct host links,
-switching and /31 or /32 prefixes without rewriting the source topology.
+Feature queries cover device-type mapping, switch chains, hosts sharing one
+switch, direct host-to-host links and /31 or /32 host prefixes, without
+rewriting the source topology.
 
 `--top-k` must be a positive integer. It is a target, not a hard budget: core rules and subject coverage may add
 records. Long queries are windowed for embeddings; reranker truncation can still

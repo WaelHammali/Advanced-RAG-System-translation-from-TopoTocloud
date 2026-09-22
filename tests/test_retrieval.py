@@ -14,14 +14,12 @@ from net2cloud.retriever import KnowledgeRetriever
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_protocol_service_and_task_coverage_survives_different_names_and_ips(tmp_path):
+def test_mapping_coverage_survives_renamed_devices_and_ips(tmp_path):
     raw = (ROOT / "examples/architecture.json").read_text()
     for old, new in [
-        ("R1", "EdgeWest"),
-        ("R2", "EdgeEast"),
-        ("WEB1", "ShopServer"),
-        ("10.10.10.", "172.20.1."),
-        ("10.20.20.", "172.20.2."),
+        ("R1", "EdgeRouter"),
+        ("SRV1", "ShopServer"),
+        ("192.168.1.", "172.20.1."),
     ]:
         raw = raw.replace(old, new)
     architecture = json.loads(raw)
@@ -30,65 +28,76 @@ def test_protocol_service_and_task_coverage_survives_different_names_and_ips(tmp
     assert architecture == before
     ids = [r["rule_id"] for r in records]
     assert ids[:3] == list(CORE_RULE_IDS)
-    assert {"MAP-001", "OSPF-001", "SVC-HTTP", "AUTO-001"} <= set(ids)
+    assert {"MAP-001", "L2-003"} <= set(ids)
     assert len(ids) == len(set(ids))
 
 
-@pytest.mark.parametrize("protocol, rule", [("rip", "RIP-001"), ("ospf", "OSPF-001")])
-def test_named_routing_protocol_has_a_rule(tmp_path, protocol, rule):
-    architecture = {
-        "components": [
-            {"id": "any-name", "routing": {"protocols": [{"name": protocol, "enabled": True}]}}
-        ]
-    }
-    records = KnowledgeRetriever(backend="lexical", index_dir=tmp_path).retrieve(architecture)
-    assert rule in {r["rule_id"] for r in records}
-
-
-def test_cloud_native_mode_excludes_behavioral_candidates(tmp_path):
+def test_translation_mode_filters_out_behavioral_only_candidates(tmp_path):
     records = KnowledgeRetriever(backend="lexical", index_dir=tmp_path).retrieve(
-        {"translation_mode": "cloud_native", "components": [{"services": [{"protocol": "http"}]}]}
+        {"translation_mode": "cloud_native", "devices": [], "links": []}
     )
     assert all(
         r["mode"] in {"all", "cloud_native"} for r in records if r["rule_id"] not in CORE_RULE_IDS
     )
-    assert "SVC-HTTP" in {r["rule_id"] for r in records}
-
-
-@pytest.mark.parametrize(
-    "routes", [[], [{"destination": "172.20.2.0/24", "via": "10.255.0.2", "interface": "wan0"}]]
-)
-def test_static_routing_retrieves_return_path_rule_without_repairing_input(tmp_path, routes):
-    architecture = json.loads((ROOT / "examples/architecture.json").read_text())
-    for component in architecture["components"]:
-        if component["type"] == "router":
-            component["routing"]["protocols"] = []
-            component["routing"]["static_routes"] = deepcopy(routes)
-    before = deepcopy(architecture)
-    records = KnowledgeRetriever(backend="lexical", index_dir=tmp_path).retrieve(architecture)
-    assert "STATIC-001" in {r["rule_id"] for r in records}
-    assert architecture == before
 
 
 def test_same_switch_input_retrieves_local_forwarding_knowledge(tmp_path):
     architecture = {
-        "components": [
-            {"id": "A", "type": "pc", "interfaces": [{"id": "eth0", "ipv4": "192.168.8.10/24"}]},
-            {"id": "B", "type": "pc", "interfaces": [{"id": "eth0", "ipv4": "192.168.8.20/24"}]},
+        "devices": [
             {
-                "id": "Switch",
+                "id": "d1",
+                "type": "pc",
+                "name": "A",
+                "network": {
+                    "ip_address": "192.168.8.10",
+                    "prefix_length": 24,
+                    "subnet_mask": "255.255.255.0",
+                    "network_address": "192.168.8.0",
+                },
+            },
+            {
+                "id": "d2",
+                "type": "pc",
+                "name": "B",
+                "network": {
+                    "ip_address": "192.168.8.20",
+                    "prefix_length": 24,
+                    "subnet_mask": "255.255.255.0",
+                    "network_address": "192.168.8.0",
+                },
+            },
+            {
+                "id": "d3",
                 "type": "switch",
-                "interfaces": [{"id": "p1", "access_vlan": 10}, {"id": "p2", "access_vlan": 10}],
+                "name": "Switch",
+                "network": {
+                    "ip_address": None,
+                    "prefix_length": None,
+                    "subnet_mask": None,
+                    "network_address": None,
+                },
             },
         ],
-        "edges": [
+        "links": [
             {
-                "source": {"component": "A", "interface": "eth0"},
-                "target": {"component": "Switch", "interface": "p1"},
+                "id": "l1",
+                "source": "d1",
+                "target": "d3",
+                "network": {
+                    "network_address": "192.168.8.0",
+                    "prefix_length": 24,
+                    "subnet_mask": "255.255.255.0",
+                },
             },
             {
-                "source": {"component": "B", "interface": "eth0"},
-                "target": {"component": "Switch", "interface": "p2"},
+                "id": "l2",
+                "source": "d2",
+                "target": "d3",
+                "network": {
+                    "network_address": "192.168.8.0",
+                    "prefix_length": 24,
+                    "subnet_mask": "255.255.255.0",
+                },
             },
         ],
     }
@@ -159,7 +168,7 @@ def test_hybrid_windows_cache_and_reranking_without_model_download(tmp_path, mon
     engine = KnowledgeRetriever(backend="hybrid", index_dir=tmp_path)
     architecture = {
         "a_long_description": "filler " * 600 + "tail_marker",
-        "services": [{"protocol": "http"}],
+        "devices": [{"type": "server", "name": "http tail_marker"}],
     }
     first = engine.retrieve(architecture)
     assert "SVC-HTTP" in {r["rule_id"] for r in first}
@@ -220,7 +229,7 @@ def test_hybrid_windows_cache_and_reranking_without_model_download(tmp_path, mon
         ("switch_loop", "L2-003"),
     ],
 )
-def test_minimal_architecture_rules_survive_renamed_components(case, expected, tmp_path):
+def test_minimal_architecture_rules_survive_renamed_devices(case, expected, tmp_path):
     raw = (ROOT / "examples/edge_cases" / (case + ".json")).read_text()
     for old, new in [
         ("PC1", "LaptopWest"),

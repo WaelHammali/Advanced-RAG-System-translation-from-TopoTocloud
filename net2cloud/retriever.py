@@ -99,81 +99,64 @@ def _json(value: Any) -> str:
     return dumps_json(value, sort_keys=True)
 
 
-def _subject_query(subject: str, entry: Any) -> str:
-    """Focus retrieval on features, without substituting their configuration."""
-    if isinstance(entry, dict):
-        if subject == "protocols" and entry.get("name"):
-            return str(entry["name"])
-        if subject == "services" and entry.get("protocol"):
-            return f"{entry['protocol']} {entry.get('implementation', '')}"
-        if subject == "tasks":
-            return "automation tasks " + str(entry.get("operation", entry.get("module", "")))
-        if subject in {"routing", "automation"}:
-            fields = " ".join(key for key, value in entry.items() if value)
-            return f"{subject} {fields.replace('_', ' ')}"
-    return _json({subject: entry})
-
-
 def _configuration_queries(architecture: dict[str, Any]) -> list[str]:
-    """Retain service/routing/task subjects for retrieval, not input validation."""
+    """Retrieval-only feature queries for a devices/links topology.
+
+    This selects knowledge only; it never enables, repairs or invents
+    configuration. The complete architecture remains the main query/model input.
+    """
     queries: list[str] = []
+    devices = architecture.get("devices", [])
+    links = architecture.get("links", [])
 
-    def visit(value: Any) -> None:
-        if isinstance(value, dict):
-            for key, item in value.items():
-                subject = key.lower()
-                if subject == "static_routes":
-                    # Even an explicit empty list needs the no-invented-routes
-                    # and return-path rules; this does not add any routes.
-                    queries.append("static routing next hop return route")
-                if subject == "components" and isinstance(item, list):
-                    roles = [
-                        str(component.get("type", ""))
-                        for component in item
-                        if isinstance(component, dict)
-                    ]
-                    queries.append("component mapping " + " ".join(dict.fromkeys(roles)))
-                    if "switch" in roles or "bridge" in roles:
-                        queries.append("switch chain bridge STP loop switching paths")
-                if subject == "ipv4" and isinstance(item, str) and item.endswith(("/31", "/32")):
-                    queries.append("point-to-point /31 /32 host route prefix")
-                if subject in {"routing", "protocols", "services", "automation", "tasks"}:
-                    entries = item if isinstance(item, list) else [item]
-                    for entry in entries:
-                        if not entry:
-                            continue
-                        # Focus on the requested feature rather than matching
-                        # example IP addresses or device names. The complete
-                        # configuration remains in the main query/model input.
-                        queries.append(_subject_query(subject, entry))
-                visit(item)
-        elif isinstance(value, list):
-            for item in value:
-                visit(item)
+    if isinstance(devices, list):
+        roles = [
+            str(device.get("type", "")) for device in devices if isinstance(device, dict)
+        ]
+        if roles:
+            queries.append("device mapping " + " ".join(dict.fromkeys(roles)))
+        if "switch" in roles or "bridge" in roles:
+            queries.append("switch chain bridge STP loop switching paths")
 
-    visit(architecture)
-    components = architecture.get("components", [])
-    edges = architecture.get("edges", [])
-    if isinstance(components, list) and isinstance(edges, list):
-        hosts = {
-            node["id"]
-            for node in components
-            if isinstance(node, dict)
-            and isinstance(node.get("id"), str)
-            and node.get("type") in ("pc", "server")
-        }
-        for edge in edges:
-            if not isinstance(edge, dict):
+    if isinstance(devices, list):
+        for device in devices:
+            if not isinstance(device, dict):
                 continue
-            endpoints = [edge.get(side) for side in ("source", "target")]
-            if all(
-                isinstance(end, dict)
-                and isinstance(end.get("component"), str)
-                and end["component"] in hosts
-                for end in endpoints
-            ):
-                queries.append("two directly cabled PCs local traffic peer")
+            network = device.get("network")
+            prefix = network.get("prefix_length") if isinstance(network, dict) else None
+            if prefix in (31, 32):
+                queries.append("point-to-point /31 /32 host route prefix")
                 break
+
+    if isinstance(devices, list) and isinstance(links, list):
+        hosts = {
+            device["id"]
+            for device in devices
+            if isinstance(device, dict)
+            and isinstance(device.get("id"), str)
+            and device.get("type") in ("pc", "server")
+        }
+        switches = {
+            device["id"]
+            for device in devices
+            if isinstance(device, dict)
+            and isinstance(device.get("id"), str)
+            and str(device.get("type", "")).lower() in {"switch", "bridge", "hub"}
+        }
+        host_switch_links: dict[str, int] = {}
+        for link in links:
+            if not isinstance(link, dict):
+                continue
+            if link.get("source") in hosts and link.get("target") in hosts:
+                queries.append("two directly cabled PCs local traffic peer")
+            for switch_id, host_id in (
+                (link.get("target"), link.get("source")),
+                (link.get("source"), link.get("target")),
+            ):
+                if switch_id in switches and host_id in hosts:
+                    host_switch_links[switch_id] = host_switch_links.get(switch_id, 0) + 1
+        if any(count >= 2 for count in host_switch_links.values()):
+            queries.append("same switch same VLAN local ping ARP")
     return list(dict.fromkeys(queries))
 
 

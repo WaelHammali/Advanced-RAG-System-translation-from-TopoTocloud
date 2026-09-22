@@ -1,9 +1,7 @@
 # Architecture readiness before translation
 
-`net2cloud/readiness.py` checks the source architecture before retrieval, model creation or
+`net2cloud/readiness.py` checks the source topology before retrieval, model creation or
 translation. It never modifies the JSON, fills missing values or calls an LLM.
-It validates known routing/service/automation field shapes as well as the graph.
-See the [architecture boundary study](edge-cases.md) for the case matrix.
 
 ```bash
 python app.py check --input examples/architecture.json
@@ -19,8 +17,8 @@ input returns a report such as:
   "errors": [
     {
       "code": "missing_ip_address",
-      "path": "/components/0/interfaces/0/ipv4",
-      "message": "Provide an IPv4 address with its prefix, for example 10.0.0.10/24."
+      "path": "/devices/0/network/ip_address",
+      "message": "Provide an IPv4 address string."
     }
   ]
 }
@@ -31,73 +29,66 @@ application can show them to the user, complete the JSON and resubmit it.
 
 ## Required information
 
-- Nonempty `components` and `edges` lists of objects.
-- Every component has a unique, nonempty `id` and a nonempty `type`. `id` is its
-  canonical name/reference, such as PC1 or R1. An optional display `name` must be
-  nonempty when present; the app does not invent one or rename components.
-- Every component has interfaces with IDs unique within that component.
-- Every non-L2 interface has an `ipv4` address and explicit prefix, such as
-  `10.10.10.10/24`. This applies to router, PC and server interfaces, including
-  explicitly disabled interfaces. Switch/bridge/hub ports need no IP; an optional
-  supplied address is still checked for IPv4 syntax and prefix.
-- Every edge has a unique ID, and each endpoint names an existing component and
-  interface. One cable per interface; use switch ports for multi-device LANs.
-- Every component has at least one valid edge to a different component. A
-  self-loop does not satisfy this requirement. A typo or dangling edge does not
-  make an isolated component ready.
-- Interface/edge `enabled`, when supplied, is a Boolean.
-- Optional `access_vlan` values are integers 1–4094. An omitted switch IP is valid;
-  an explicitly supplied null address is not.
-- Supplied routing, services and automation sections must have their documented
-  object/list shapes. Known Boolean and numeric fields are checked without coercion.
-- Gateway/static-route and RIP/OSPF interface references must exist on that device.
-  Static destinations use canonical network prefixes (no host bits). OSPF requires
-  a router ID, interface list and area on each listed interface; RIP requires a
-  version and interface list. Empty interface lists represent no participation.
-- Supplied service listeners require an integer port 1–65535 and a valid IPv4
-  address when an address is supplied. Services require a nonempty protocol name.
-- Automation tasks have unique IDs, named operations, object parameters, existing
-  target IDs and acyclic dependencies on existing task IDs. Forward references
-  are allowed. Connection target IDs are checked too.
-- If present, `schema_version` is `"1.0"` and `translation_mode` is `behavioral_lab`
-  or `cloud_native`. Known metadata fields must have the documented types.
+- Nonempty `devices` and `links` lists of objects.
+- Every device has a unique, nonempty `id`, a nonempty `name` and a nonempty
+  `type`, such as `pc`, `router`, `server` or `switch`.
+- Every device has a `network` object with `ip_address`, `prefix_length`
+  (0–32), `subnet_mask` and `network_address`. For any type other than
+  `switch`/`bridge`/`hub`, all four must be present (not `null`) and
+  mutually consistent: `subnet_mask` must be the canonical mask for
+  `prefix_length`, and `network_address` must be the canonical network base
+  of `ip_address`/`prefix_length`. A `switch`/`bridge`/`hub` may leave all
+  four fields `null`; an explicitly supplied address on one is still checked
+  the same way.
+- A device carries at most one `network` object, used for every link it has —
+  there is no per-link address on the device side. A `pc` may have exactly
+  one link; any other type may have any number of links.
+- Every link has a unique, nonempty `id`, and `source`/`target` naming existing
+  device `id`s (not display names). A link cannot connect a device to itself.
+- Every link has its own `network` object with `network_address`,
+  `prefix_length` and `subnet_mask`, always required and internally
+  consistent the same way as a device's. The link's declared network must
+  also contain the address of any non-switch device at either end; a device
+  whose own address falls outside its link's network is rejected.
+- Every device has at least one valid link to a different device. A
+  self-loop does not satisfy this requirement. A typo or dangling reference
+  does not make an isolated device ready.
 - All values must be JSON-compatible, with finite numbers, string object keys,
   no reference cycles and at most 64 levels of nesting. JSON Pointer errors escape
   `/` and `~` in extension keys.
 
 ## Completeness is different from working connectivity
 
-An explicit disabled cable still connects the objects structurally, so it is
-retained as a failure exercise. Empty static-route lists, disabled protocols,
-OSPF mismatches and absent optional gateways are not automatically repaired or
-rejected by this check. Two same-LAN hosts do not need a gateway.
-Disabled sections must still be well-formed. Single-device architectures are
-rejected under the explicit no-isolated-components policy; two directly cabled
-PCs are accepted without a router or switch.
+This gate is deliberately strict about the input's own consistency (an address
+must match its own mask, and a link's network must match its own devices), but
+it says nothing about whether devices can actually reach each other beyond one
+link, or whether a plan built from this input is correct. Separate connected
+groups are permitted as long as no individual device is alone; the gate does
+not require all devices to reach each other. It does not check for duplicate
+addresses across the whole topology (only within one connected group — see
+below), route feasibility, service readiness, implementation support or cloud
+limits.
 
-Separate connected groups are permitted as long as no individual component is
-alone. The gate does not require all components to reach each other. It does not
-check address uniqueness within VLANs, route feasibility, protocol convergence,
-service readiness, implementation support or cloud limits. Additional unused but
-addressed interfaces are permitted by this input gate; external tools may impose
-their own implementation requirements. Unknown protocol names and custom extension
-fields are preserved; their specific semantics are not declared valid by this gate.
-Interface address checking remains syntactic: special-address semantics and
-same-segment address conflicts are not checked. Switch cycles require explicit
-loop-control requirements in the plan; this translator does not implement STP.
+One consequence of the strict per-link consistency check: two devices in
+genuinely different subnets, cabled directly with no intermediate router, can
+no longer be represented as "ready but expected to fail to ping" the way an
+earlier, richer contract allowed — the link's single `network` object cannot
+honestly describe two disjoint subnets at once, and fabricating a covering
+block just to pass the gate would misrepresent the data. That case is now
+rejected at the gate instead.
 
 These limits are deliberate: passing readiness means the requested identity,
-addressing and link prerequisites are complete. It does not mean ping will pass
-or every feature has an implementation.
+addressing and link prerequisites are complete and self-consistent. It does
+not mean ping will pass or every feature has an implementation.
 
 ## Issue list
 
 `net2cloud.issues.list_issues(architecture)` returns every readiness problem as a
-`(component, other, message)` tuple, for a person or an assistant to act on. `other`
-is `""` when one component is concerned; it names the second component for a shared
-name or a shared IP address. Problems belonging to no component have an empty
-component. Same-address clashes are reported for enabled interfaces in one connected
-group only and never block translation, so the list can be non-empty while the file
+`(device, other, message)` tuple, for a person or an assistant to act on. `other`
+is `""` when one device is concerned; it names the second device for a shared
+ID or a shared IP address. Problems belonging to no device have an empty
+device. Same-address clashes are reported for devices in one connected group
+only and never block translation, so the list can be non-empty while the file
 is ready. It does not change the architecture or the `check` report.
 
 ## API and CLI behavior
@@ -117,9 +108,6 @@ runtime errors use exit 1. Discussion and correction remain in the calling app.
 
 ## AWS-only boundary
 
-`cloud.provider` may be omitted (AWS is the target), or explicitly set to `aws`.
-Other providers are rejected before retrieval. Generator-specific `generation`
-settings are rejected; they have no meaning in an AWS JSON-only translator.
-The old `ansible` input section is rejected with a migration error: use the
-provider-neutral `automation` section for declarative task/access requirements.
-Unknown extension fields otherwise remain attached to the source.
+AWS is this application's only target provider; that is fixed by the planner
+prompt and is not a field the input JSON carries. Unknown extension fields
+otherwise remain attached to the source.

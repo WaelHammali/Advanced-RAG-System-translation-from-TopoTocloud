@@ -1,7 +1,14 @@
 """Deterministic architecture completeness checks before retrieval or translation.
 
-Readiness checks names, links, addresses and known configuration shapes/references.
-It does not predict reachability, repair settings or certify implementation support.
+Readiness checks a devices/links topology JSON: names, addressing and graph
+references. It does not predict reachability, repair settings or certify
+implementation support.
+
+A device carries at most one address, in its own `network` object (not per
+link). Switch/bridge/hub devices may leave every `network` field null. Every
+other device must have a complete, internally consistent `network` object,
+and every link must have its own complete, internally consistent `network`
+object that agrees with any addressed device at either end.
 """
 
 from __future__ import annotations
@@ -10,8 +17,11 @@ import ipaddress
 import math
 from typing import Any
 
-from .configuration_validation import validate_configuration
 from .contracts import JSONObject
+
+LAYER2_TYPES = {"switch", "bridge", "hub"}
+DEVICE_NETWORK_FIELDS = ("ip_address", "prefix_length", "subnet_mask", "network_address")
+LINK_NETWORK_FIELDS = ("network_address", "prefix_length", "subnet_mask")
 
 
 class ArchitectureNotReady(ValueError):
@@ -69,6 +79,99 @@ def _json_errors(value: Any) -> list[dict[str, str]]:
     return errors
 
 
+def _parse_prefix(value: Any, path: str, error) -> int | None:
+    if type(value) is not int or not 0 <= value <= 32:
+        error("invalid_prefix_length", path, "Provide an integer prefix length from 0 to 32.")
+        return None
+    return value
+
+
+def _parse_ipv4(value: Any, path: str, code: str, error) -> ipaddress.IPv4Address | None:
+    if not isinstance(value, str):
+        error(code, path, "Provide an IPv4 address string.")
+        return None
+    try:
+        return ipaddress.IPv4Address(value)
+    except ValueError:
+        error(code, path, "The IPv4 address is invalid.")
+        return None
+
+
+def _check_mask(mask_value: Any, prefix: int | None, path: str, error) -> None:
+    if not isinstance(mask_value, str):
+        error("invalid_subnet_mask", path, "Provide the subnet mask as a dotted IPv4 string.")
+        return
+    try:
+        mask = ipaddress.IPv4Address(mask_value)
+    except ValueError:
+        error("invalid_subnet_mask", path, "The subnet mask is not a valid IPv4 address.")
+        return
+    if prefix is not None and str(mask) != str(ipaddress.IPv4Network((0, prefix)).netmask):
+        error(
+            "subnet_mask_mismatch",
+            path,
+            f"subnet_mask does not match prefix_length /{prefix}.",
+        )
+
+
+def _check_device_network(
+    network: dict, path: str, error, *, optional: bool
+) -> tuple[ipaddress.IPv4Address, int] | None:
+    values = {field: network.get(field) for field in DEVICE_NETWORK_FIELDS}
+    if optional and all(value is None for value in values.values()):
+        return None
+    missing = [field for field in DEVICE_NETWORK_FIELDS if values[field] is None]
+    for field in missing:
+        error("missing_" + field, f"{path}/{field}", f"Provide {field}.")
+    if missing:
+        return None
+    ip = _parse_ipv4(values["ip_address"], f"{path}/ip_address", "invalid_ip_address", error)
+    prefix = _parse_prefix(values["prefix_length"], f"{path}/prefix_length", error)
+    _check_mask(values["subnet_mask"], prefix, f"{path}/subnet_mask", error)
+    network_address = _parse_ipv4(
+        values["network_address"], f"{path}/network_address", "invalid_network_address", error
+    )
+    if ip is not None and prefix is not None:
+        expected = ipaddress.IPv4Network(f"{ip}/{prefix}", strict=False).network_address
+        if network_address is not None and network_address != expected:
+            error(
+                "network_address_mismatch",
+                f"{path}/network_address",
+                f"network_address should be {expected} for {ip}/{prefix}.",
+            )
+        return ip, prefix
+    return None
+
+
+def _check_link_network(network: dict, path: str, error) -> ipaddress.IPv4Network | None:
+    values = {field: network.get(field) for field in LINK_NETWORK_FIELDS}
+    missing = [field for field in LINK_NETWORK_FIELDS if values[field] is None]
+    for field in missing:
+        error("missing_" + field, f"{path}/{field}", f"Provide {field}.")
+    if missing:
+        return None
+    prefix = _parse_prefix(values["prefix_length"], f"{path}/prefix_length", error)
+    _check_mask(values["subnet_mask"], prefix, f"{path}/subnet_mask", error)
+    if not isinstance(values["network_address"], str):
+        error(
+            "invalid_network_address",
+            f"{path}/network_address",
+            "Provide an IPv4 network address string.",
+        )
+        return None
+    if prefix is None:
+        return None
+    try:
+        return ipaddress.IPv4Network(f"{values['network_address']}/{prefix}", strict=True)
+    except ValueError:
+        error(
+            "invalid_network_address",
+            f"{path}/network_address",
+            "network_address must be the canonical network base for this prefix (no host bits set).",
+        )
+        return None
+
+
 def check_readiness(architecture: Any) -> JSONObject:
     """Return a machine-readable report without changing the supplied JSON."""
     errors: list[dict[str, str]] = []
@@ -88,186 +191,137 @@ def check_readiness(architecture: Any) -> JSONObject:
     errors.extend(_json_errors(architecture))
     if errors:
         return result()
-    components = architecture.get("components")
-    if not isinstance(components, list) or not components:
-        error("missing_components", "/components", "Provide a nonempty list of components.")
-        components = []
-    component_paths: dict[str, str] = {}
-    interfaces: dict[str, set[str]] = {}
-    for index, component in enumerate(components):
-        path = f"/components/{index}"
-        if not isinstance(component, dict):
-            error("invalid_component", path, "Each component must be an object.")
+
+    devices = architecture.get("devices")
+    if not isinstance(devices, list) or not devices:
+        error("missing_devices", "/devices", "Provide a nonempty list of devices.")
+        devices = []
+    device_paths: dict[str, str] = {}
+    device_types: dict[str, str] = {}
+    device_addresses: dict[str, tuple[ipaddress.IPv4Address, int]] = {}
+    for index, device in enumerate(devices):
+        path = f"/devices/{index}"
+        if not isinstance(device, dict):
+            error("invalid_device", path, "Each device must be an object.")
             continue
-        identifier = component.get("id")
+        identifier = device.get("id")
         valid_id = named(identifier)
         if not valid_id:
             error(
-                "missing_component_id",
+                "missing_device_id",
                 path + "/id",
-                "Give this component a nonempty unique ID/name, such as PC1 or R1.",
+                "Give this device a nonempty unique ID, such as device_1.",
             )
-        elif identifier in component_paths:
-            error(
-                "duplicate_component_id",
-                path + "/id",
-                f"Component ID {identifier!r} is already used.",
-            )
+        elif identifier in device_paths:
+            error("duplicate_device_id", path + "/id", f"Device ID {identifier!r} is already used.")
             valid_id = False
         else:
-            component_paths[identifier] = path
-        if "name" in component and not named(component["name"]):
+            device_paths[identifier] = path
+        if not named(device.get("name")):
             error(
-                "missing_component_name",
+                "missing_device_name",
                 path + "/name",
-                "An explicitly supplied display name must not be empty.",
+                "Give this device a nonempty display name, such as R1.",
             )
-        role = component.get("type")
+        role = device.get("type")
         if not named(role):
             error(
-                "missing_component_type",
+                "missing_device_type",
                 path + "/type",
-                "Specify the component type, such as pc, router, server or switch.",
+                "Specify the device type, such as pc, router, server or switch.",
             )
-        layer2 = isinstance(role, str) and role.lower() in {"switch", "bridge", "hub"}
-        ports = component.get("interfaces")
-        if not isinstance(ports, list) or not ports:
+        layer2 = isinstance(role, str) and role.lower() in LAYER2_TYPES
+        network = device.get("network")
+        address = None
+        if not isinstance(network, dict):
             error(
-                "missing_interfaces",
-                path + "/interfaces",
-                "Provide the component's interfaces and their IDs.",
+                "missing_device_network",
+                path + "/network",
+                "Provide a network object; use null values for fields that do not apply.",
             )
-            ports = []
-        port_ids: set[str] = set()
-        for port_index, port in enumerate(ports):
-            port_path = f"{path}/interfaces/{port_index}"
-            if not isinstance(port, dict):
-                error("invalid_interface", port_path, "Each interface must be an object.")
-                continue
-            port_id = port.get("id")
-            if not named(port_id):
-                error(
-                    "missing_interface_id", port_path + "/id", "Give this interface a nonempty ID."
-                )
-            elif port_id in port_ids:
-                error(
-                    "duplicate_interface_id",
-                    port_path + "/id",
-                    f"Interface {port_id!r} is repeated on this component.",
-                )
-            else:
-                port_ids.add(port_id)
-            if "enabled" in port and type(port["enabled"]) is not bool:
-                error(
-                    "invalid_enabled_state",
-                    port_path + "/enabled",
-                    "enabled must be true or false.",
-                )
-            address = port.get("ipv4")
-            if "access_vlan" in port and (
-                type(port["access_vlan"]) is not int or not 1 <= port["access_vlan"] <= 4094
-            ):
-                error(
-                    "invalid_vlan",
-                    port_path + "/access_vlan",
-                    "Use an integer VLAN ID from 1 to 4094.",
-                )
-            if "ipv4" not in port and layer2:
-                continue
-            if not named(address):
-                error(
-                    "missing_ip_address",
-                    port_path + "/ipv4",
-                    "Provide an IPv4 address with its prefix, for example 10.0.0.10/24.",
-                )
-            elif "/" not in address:
-                error(
-                    "missing_ip_prefix",
-                    port_path + "/ipv4",
-                    "Include the subnet prefix with the IPv4 address, for example /24.",
-                )
-            else:
-                try:
-                    ipaddress.IPv4Interface(address)
-                except ValueError:
-                    error(
-                        "invalid_ip_address",
-                        port_path + "/ipv4",
-                        "The IPv4 address or subnet prefix is invalid.",
-                    )
-        if valid_id:
-            interfaces[identifier] = port_ids
-
-    edges = architecture.get("edges")
-    if not isinstance(edges, list) or not edges:
-        error("missing_edges", "/edges", "Provide links connecting the components.")
-        edges = []
-    connected: set[str] = set()
-    edge_ids: set[str] = set()
-    used_ports: set[tuple[str, str]] = set()
-    for index, edge in enumerate(edges):
-        path = f"/edges/{index}"
-        if not isinstance(edge, dict):
-            error("invalid_edge", path, "Each link must be an object.")
-            continue
-        before = len(errors)
-        identifier = edge.get("id")
-        if not named(identifier):
-            error("missing_edge_id", path + "/id", "Give this link a nonempty ID.")
-        elif identifier in edge_ids:
-            error("duplicate_edge_id", path + "/id", f"Link ID {identifier!r} is already used.")
         else:
-            edge_ids.add(identifier)
-        if "enabled" in edge and type(edge["enabled"]) is not bool:
-            error("invalid_enabled_state", path + "/enabled", "enabled must be true or false.")
-        ends: list[tuple[str, str]] = []
+            address = _check_device_network(network, path + "/network", error, optional=layer2)
+        if valid_id:
+            device_types[identifier] = role if isinstance(role, str) else ""
+            if address is not None:
+                device_addresses[identifier] = address
+
+    links = architecture.get("links")
+    if not isinstance(links, list) or not links:
+        error("missing_links", "/links", "Provide links connecting the devices.")
+        links = []
+    connected: set[str] = set()
+    link_ids: set[str] = set()
+    link_counts: dict[str, int] = {identifier: 0 for identifier in device_paths}
+    for index, link in enumerate(links):
+        path = f"/links/{index}"
+        if not isinstance(link, dict):
+            error("invalid_link", path, "Each link must be an object.")
+            continue
+        identifier = link.get("id")
+        valid_link_id = named(identifier)
+        if not valid_link_id:
+            error("missing_link_id", path + "/id", "Give this link a nonempty ID.")
+        elif identifier in link_ids:
+            error("duplicate_link_id", path + "/id", f"Link ID {identifier!r} is already used.")
+            valid_link_id = False
+        else:
+            link_ids.add(identifier)
+        # Structural validity gates connectivity; an addressing mismatch on an
+        # otherwise-real cable must not make a device look isolated.
+        edge_ok = valid_link_id
+        ends: list[tuple[str, str]] = []  # (side, node_id)
         for side in ("source", "target"):
-            endpoint = edge.get(side)
-            endpoint_path = path + "/" + side
-            if not isinstance(endpoint, dict):
+            node_id = link.get(side)
+            if not named(node_id) or node_id not in device_types:
                 error(
-                    "missing_link_endpoint",
-                    endpoint_path,
-                    "Specify the endpoint component and interface IDs.",
+                    "unknown_device",
+                    path + "/" + side,
+                    f"This link's {side} must reference an existing device ID.",
                 )
+                edge_ok = False
                 continue
-            node_id = endpoint.get("component")
-            port_id = endpoint.get("interface")
-            if not named(node_id) or node_id not in interfaces:
-                error(
-                    "unknown_component",
-                    endpoint_path + "/component",
-                    "This link must reference an existing component ID.",
-                )
-                continue
-            if not named(port_id) or port_id not in interfaces[node_id]:
-                error(
-                    "unknown_interface",
-                    endpoint_path + "/interface",
-                    f"Reference an existing interface on {node_id!r}.",
-                )
-                continue
-            key = (node_id, port_id)
-            if key in used_ports or key in ends:
-                error(
-                    "interface_reused",
-                    endpoint_path,
-                    "An interface can have only one cable; add a switch or another interface.",
-                )
-            ends.append(key)
-        if len(ends) == 2 and ends[0][0] == ends[1][0]:
-            error("self_link", path, "Connect this component to another component, not itself.")
-        if len(errors) == before:
-            used_ports.update(ends)
-            connected.update(node_id for node_id, _ in ends)
-    for identifier, path in component_paths.items():
+            ends.append((side, node_id))
+        if len(ends) == 2 and ends[0][1] == ends[1][1]:
+            error("self_link", path, "Connect this link to another device, not itself.")
+            edge_ok = False
+        network = link.get("network")
+        link_network = None
+        if not isinstance(network, dict):
+            error(
+                "missing_link_network",
+                path + "/network",
+                "Provide this link's network object.",
+            )
+        else:
+            link_network = _check_link_network(network, path + "/network", error)
+        if link_network is not None:
+            for side, node_id in ends:
+                address = device_addresses.get(node_id)
+                if address is not None and address[0] not in link_network:
+                    error(
+                        "link_endpoint_subnet_mismatch",
+                        path + "/" + side,
+                        f"Device {node_id!r}'s address is not inside this link's network.",
+                    )
+        if edge_ok:
+            connected.update(node_id for _, node_id in ends)
+            for _, node_id in ends:
+                link_counts[node_id] = link_counts.get(node_id, 0) + 1
+
+    for identifier, path in device_paths.items():
         if identifier not in connected:
             error(
-                "isolated_component",
+                "isolated_device",
                 path,
-                f"Component {identifier!r} has no valid link to another component.",
+                f"Device {identifier!r} has no valid link to another device.",
             )
-    validate_configuration(architecture, interfaces, error)
+        elif device_types[identifier].lower() == "pc" and link_counts[identifier] > 1:
+            error(
+                "too_many_links",
+                path,
+                f"Device {identifier!r} is a pc; a pc may have only one link.",
+            )
     return result()
 
 

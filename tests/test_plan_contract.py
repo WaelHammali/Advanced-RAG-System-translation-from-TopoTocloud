@@ -49,17 +49,14 @@ def retrieval(tmp_path):
 
 def test_mixed_configuration_reaches_model_and_input_remains_unchanged(architecture, retrieval):
     architecture["custom"] = {"unicode": "réseau", "values": [False, None, 0]}
-    architecture["components"][2]["routing"]["protocols"][0]["enabled"] = False
-    architecture["components"][-1]["services"][0]["enabled"] = False
     before = deepcopy(architecture)
     model_plan = {
         "cloud_plan": {
             "provider": "aws",
-            "translation_mode": "behavioral_lab",
             "custom_mapping": "keep",
         },
         "limitations": [],
-        "rule_ids": ["OSPF-001", "SVC-HTTP"],
+        "rule_ids": ["MAP-001", "L2-003"],
         # These model-authored values must never replace authoritative inputs.
         "architecture": {"invented": True},
         "knowledge": [],
@@ -73,14 +70,14 @@ def test_mixed_configuration_reaches_model_and_input_remains_unchanged(architect
     supplied = json.loads(request["messages"][1]["content"])
     assert supplied["architecture"] == before
     ids = {chunk["rule_id"] for chunk in supplied["knowledge"]}
-    assert {*CORE_RULE_IDS, "OSPF-001", "SVC-HTTP", "AUTO-001"} <= ids
+    assert {*CORE_RULE_IDS, "MAP-001", "L2-003"} <= ids
     assert output["cloud_plan"] == model_plan["cloud_plan"]
     assert request["response_format"] == {"type": "json_object"}
     assert {item["rule_id"] for item in output["knowledge"]} == ids
 
 
 def test_arbitrary_extra_fields_are_preserved_on_ready_input(architecture, retrieval):
-    architecture["custom_component_format"] = {"strange_field": "kept"}
+    architecture["custom_device_format"] = {"strange_field": "kept"}
     client = ModelClient('{"cloud_plan": {"provider": "aws"}, "rule_ids": [], "limitations": []}')
     output = app.plan_architecture(architecture, client=client, retriever=retrieval)
     assert output["architecture"] == architecture
@@ -88,19 +85,37 @@ def test_arbitrary_extra_fields_are_preserved_on_ready_input(architecture, retri
 
 
 def test_many_routers_do_not_override_model_plan(retrieval):
+    # A flat chain on one shared subnet: each router has at most one address,
+    # used consistently across however many links it has.
     architecture = {
-        "components": [{"id": f"Edge-{i}", "type": "router", "interfaces": []} for i in range(9)],
-        "edges": [],
+        "devices": [
+            {
+                "id": f"edge-{i}",
+                "type": "router",
+                "name": f"Edge-{i}",
+                "network": {
+                    "ip_address": f"10.254.0.{i + 1}",
+                    "prefix_length": 24,
+                    "subnet_mask": "255.255.255.0",
+                    "network_address": "10.254.0.0",
+                },
+            }
+            for i in range(9)
+        ],
+        "links": [],
     }
     for index in range(8):
-        left, right = architecture["components"][index : index + 2]
-        left["interfaces"].append({"id": "right", "ipv4": f"10.254.{index}.1/30"})
-        right["interfaces"].append({"id": "left", "ipv4": f"10.254.{index}.2/30"})
-        architecture["edges"].append(
+        left, right = architecture["devices"][index : index + 2]
+        architecture["links"].append(
             {
                 "id": f"cable-{index}",
-                "source": {"component": left["id"], "interface": "right"},
-                "target": {"component": right["id"], "interface": "left"},
+                "source": left["id"],
+                "target": right["id"],
+                "network": {
+                    "network_address": "10.254.0.0",
+                    "prefix_length": 24,
+                    "subnet_mask": "255.255.255.0",
+                },
             }
         )
     expected = {
@@ -181,7 +196,7 @@ def test_cli_context_is_json_and_requires_no_client(tmp_path, monkeypatch, capsy
     captured = capsys.readouterr()
     assert status == 0 and captured.err == ""
     assert json.loads(captured.out) == json.loads(output.read_text())
-    assert "SVC-HTTP" in {r["rule_id"] for r in json.loads(captured.out)["knowledge"]}
+    assert "MAP-001" in {r["rule_id"] for r in json.loads(captured.out)["knowledge"]}
 
 
 def test_cli_plan_writes_only_json_artifact(tmp_path, monkeypatch, capsys):
@@ -260,7 +275,7 @@ def test_provider_with_no_choices_has_a_clear_error(architecture):
 
 def test_cli_cannot_overwrite_input(tmp_path, capsys):
     path = tmp_path / "architecture.json"
-    original = '{"components": []}'
+    original = '{"devices": []}'
     path.write_text(original, encoding="utf-8")
     assert app.main(["context", "--input", str(path), "--output", str(path)]) == 1
     assert path.read_text() == original
@@ -312,7 +327,7 @@ def test_cli_context_runs_outside_checkout_without_optional_dependencies(tmp_pat
     assert not result.stderr
     context = json.loads(result.stdout)
     assert context == json.loads(output.read_text(encoding="utf-8"))
-    assert {"OSPF-001", "SVC-HTTP", "AUTO-001"} <= {r["rule_id"] for r in context["knowledge"]}
+    assert {"MAP-001", "L2-003"} <= {r["rule_id"] for r in context["knowledge"]}
 
 
 @pytest.mark.parametrize("model", ["openai/gpt-oss-120b", "openai/gpt-oss-20b"])
@@ -396,14 +411,11 @@ def test_deployment_sections_cannot_reenter_the_output(section, architecture):
         plan_with_rag(architecture, [], client=ModelClient(json.dumps(response)))
 
 
-def test_configuration_and_services_are_inside_the_aws_plan(architecture, retrieval):
-    configuration = {
-        "tasks": architecture["automation"]["tasks"],
-        "services": [{"component_id": "WEB1", **architecture["components"][-1]["services"][0]}],
-    }
+def test_configuration_is_inside_the_aws_plan(architecture, retrieval):
+    configuration = {"targets": [{"device_id": "device_4", "resource_ref": "lab_worker"}]}
     response = {
         "cloud_plan": {"provider": "aws", "configuration": configuration},
-        "rule_ids": ["AUTO-001", "SVC-HTTP"],
+        "rule_ids": ["MAP-001"],
         "limitations": [],
     }
     output = app.plan_architecture(
@@ -418,7 +430,6 @@ def test_configuration_and_services_are_inside_the_aws_plan(architecture, retrie
     "case",
     [
         "two_pcs_direct",
-        "two_pcs_different_subnets",
         "two_pcs_31",
         "two_pcs_32",
         "separate_pairs",
@@ -428,7 +439,7 @@ def test_configuration_and_services_are_inside_the_aws_plan(architecture, retrie
 def test_edge_case_translation_preserves_the_source_graph(case, tmp_path):
     architecture = json.loads((ROOT / "examples/edge_cases" / (case + ".json")).read_text())
     response = {
-        "cloud_plan": {"provider": "aws", "networking": {"links": architecture["edges"]}},
+        "cloud_plan": {"provider": "aws", "networking": {"links": architecture["links"]}},
         "rule_ids": [],
         "limitations": ["Unverified illustrative plan"],
     }
@@ -439,7 +450,7 @@ def test_edge_case_translation_preserves_the_source_graph(case, tmp_path):
         retriever=KnowledgeRetriever(backend="lexical", index_dir=tmp_path),
     )
     assert result["architecture"] == architecture == before
-    assert result["cloud_plan"]["networking"]["links"] == before["edges"]
+    assert result["cloud_plan"]["networking"]["links"] == before["links"]
 
 
 def test_package_cli_and_compatibility_launcher_agree_without_dependencies():

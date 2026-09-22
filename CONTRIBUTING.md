@@ -24,9 +24,9 @@ The separate Phase 1 pipeline is outside these application checks.
 
 All application modules are in `net2cloud/`. `app.py` at repository root is only a
 compatibility launcher. See [architecture](docs/architecture.md) for module roles.
-Preserve source values, intentional routing failures and unknown extension fields.
-Return structured readiness errors before retrieval; never infer missing IPs or
-repair routes. The model returns only the documented AWS envelope.
+Preserve source values and unknown extension fields. Return structured readiness
+errors before retrieval; never infer missing addresses or repair inconsistent
+ones. The model returns only the documented AWS envelope.
 
 Use [kb/rules](kb/rules) for canonical networking/AWS knowledge and
 [kb/examples](kb/examples) for behavioral illustrations. `docs/` contains app guides,

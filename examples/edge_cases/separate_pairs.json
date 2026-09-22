@@ -1,69 +1,69 @@
 {
-  "schema_version": "1.0",
-  "translation_mode": "behavioral_lab",
-  "components": [
+  "devices": [
     {
-      "id": "PC1",
+      "id": "device_1",
       "type": "pc",
-      "interfaces": [
-        {
-          "id": "eth0",
-          "ipv4": "10.0.0.1/24"
-        }
-      ]
-    },
-    {
-      "id": "PC2",
-      "type": "pc",
-      "interfaces": [
-        {
-          "id": "eth0",
-          "ipv4": "10.0.0.2/24"
-        }
-      ]
-    },
-    {
-      "id": "PC3",
-      "type": "pc",
-      "interfaces": [
-        {
-          "id": "eth0",
-          "ipv4": "10.0.0.1/24"
-        }
-      ]
-    },
-    {
-      "id": "PC4",
-      "type": "pc",
-      "interfaces": [
-        {
-          "id": "eth0",
-          "ipv4": "10.0.0.2/24"
-        }
-      ]
-    }
-  ],
-  "edges": [
-    {
-      "id": "a",
-      "source": {
-        "component": "PC1",
-        "interface": "eth0"
-      },
-      "target": {
-        "component": "PC2",
-        "interface": "eth0"
+      "name": "PC1",
+      "network": {
+        "ip_address": "10.0.0.1",
+        "prefix_length": 24,
+        "subnet_mask": "255.255.255.0",
+        "network_address": "10.0.0.0"
       }
     },
     {
-      "id": "b",
-      "source": {
-        "component": "PC3",
-        "interface": "eth0"
-      },
-      "target": {
-        "component": "PC4",
-        "interface": "eth0"
+      "id": "device_2",
+      "type": "pc",
+      "name": "PC2",
+      "network": {
+        "ip_address": "10.0.0.2",
+        "prefix_length": 24,
+        "subnet_mask": "255.255.255.0",
+        "network_address": "10.0.0.0"
+      }
+    },
+    {
+      "id": "device_3",
+      "type": "pc",
+      "name": "PC3",
+      "network": {
+        "ip_address": "10.0.0.1",
+        "prefix_length": 24,
+        "subnet_mask": "255.255.255.0",
+        "network_address": "10.0.0.0"
+      }
+    },
+    {
+      "id": "device_4",
+      "type": "pc",
+      "name": "PC4",
+      "network": {
+        "ip_address": "10.0.0.2",
+        "prefix_length": 24,
+        "subnet_mask": "255.255.255.0",
+        "network_address": "10.0.0.0"
+      }
+    }
+  ],
+  "links": [
+    {
+      "id": "link_1",
+      "source": "device_1",
+      "target": "device_2",
+      "network": {
+        "network_address": "10.0.0.0",
+        "prefix_length": 24,
+        "subnet_mask": "255.255.255.0"
+      }
+    },
+    {
+      "id": "link_2",
+      "source": "device_3",
+      "target": "device_4",
+      "network": {
+        "network_address": "10.0.0.0",
+        "prefix_length": 24,
+        "subnet_mask": "255.255.255.0"
       }
     }
   ]

@@ -1,38 +1,37 @@
 {
-  "schema_version": "1.0",
-  "translation_mode": "behavioral_lab",
-  "components": [
+  "devices": [
     {
-      "id": "PC1",
+      "id": "device_1",
       "type": "pc",
-      "interfaces": [
-        {
-          "id": "eth0",
-          "ipv4": "10.0.0.1/32"
-        }
-      ]
+      "name": "PC1",
+      "network": {
+        "ip_address": "10.0.0.1",
+        "prefix_length": 32,
+        "subnet_mask": "255.255.255.255",
+        "network_address": "10.0.0.1"
+      }
     },
     {
-      "id": "PC2",
+      "id": "device_2",
       "type": "pc",
-      "interfaces": [
-        {
-          "id": "eth0",
-          "ipv4": "10.0.0.2/32"
-        }
-      ]
+      "name": "PC2",
+      "network": {
+        "ip_address": "10.0.0.2",
+        "prefix_length": 32,
+        "subnet_mask": "255.255.255.255",
+        "network_address": "10.0.0.2"
+      }
     }
   ],
-  "edges": [
+  "links": [
     {
-      "id": "cable",
-      "source": {
-        "component": "PC1",
-        "interface": "eth0"
-      },
-      "target": {
-        "component": "PC2",
-        "interface": "eth0"
+      "id": "link_1",
+      "source": "device_1",
+      "target": "device_2",
+      "network": {
+        "network_address": "10.0.0.0",
+        "prefix_length": 30,
+        "subnet_mask": "255.255.255.252"
       }
     }
   ]

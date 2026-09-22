@@ -1,9 +1,9 @@
 # Network architecture JSON → AWS plan JSON
 
-This application validates a network architecture, retrieves networking knowledge,
+This application validates a network topology, retrieves networking knowledge,
 and uses Groq to translate it into a structured AWS architecture plan. It preserves
-source devices, links, addresses, routing, services and configuration requirements.
-It returns JSON only and does not provision infrastructure or execute configuration.
+source devices, links and addressing. It returns JSON only and does not provision
+infrastructure or execute configuration.
 
 ```text
 architecture.json → readiness checks → knowledge retrieval → Groq → aws_plan.json
@@ -45,15 +45,13 @@ compatibility launcher; application logic lives in the package.
 ## Output and validation
 
 The output has `cloud_plan` (with `provider: "aws"`), `rule_ids`, `limitations`,
-the unchanged input `architecture`, and retrieved `knowledge` metadata. Service
-and automation requirements belong inside `cloud_plan.configuration`.
+the unchanged input `architecture`, and retrieved `knowledge` metadata.
 See the [JSON contract](docs/json-contract.md) and the
 [hand-authored output example](examples/aws_plan.json).
 
 Incomplete input is rejected before retrieval or model calls. Single isolated
-components remain blocked under the project's policy; directly connected PCs are
-valid. Complete configurations that deliberately fail to ping remain unchanged.
-Readiness does not prove that a model's plan is correct or deployable.
+devices remain blocked under the project's policy; directly connected PCs are
+valid. Readiness does not prove that a model's plan is correct or deployable.
 
 `check` returns a readiness report, with exit 0 for ready or 2 for incomplete.
 `plan` and `context` return readiness errors on stderr with exit 2; other runtime

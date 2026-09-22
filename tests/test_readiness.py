@@ -34,8 +34,8 @@ def test_complete_examples_are_ready_and_unchanged(filename):
         "input",
         1,
         {},
-        {"components": None, "edges": None},
-        {"components": [None], "edges": [None]},
+        {"devices": None, "links": None},
+        {"devices": [None], "links": [None]},
     ],
 )
 def test_malformed_shapes_return_issues_instead_of_crashing(value):
@@ -51,56 +51,56 @@ def test_malformed_shapes_return_issues_instead_of_crashing(value):
         "missing_type",
         "duplicate_id",
         "missing_ip",
-        "prefix",
+        "invalid_prefix",
         "bad_ip",
         "unknown_endpoint",
-        "unknown_interface",
-        "missing_edge_id",
-        "reused_port",
+        "missing_link_id",
         "isolated",
     ],
 )
 def test_required_fields_and_connectivity_block_translation(architecture, issue):
     if issue == "missing_id":
-        del architecture["components"][0]["id"]
-        code = "missing_component_id"
+        del architecture["devices"][0]["id"]
+        code = "missing_device_id"
     elif issue == "empty_name":
-        architecture["components"][0]["name"] = " "
-        code = "missing_component_name"
+        architecture["devices"][0]["name"] = " "
+        code = "missing_device_name"
     elif issue == "missing_type":
-        del architecture["components"][0]["type"]
-        code = "missing_component_type"
+        del architecture["devices"][0]["type"]
+        code = "missing_device_type"
     elif issue == "duplicate_id":
-        architecture["components"][1]["id"] = "PC1"
-        code = "duplicate_component_id"
+        architecture["devices"][1]["id"] = architecture["devices"][0]["id"]
+        code = "duplicate_device_id"
     elif issue == "missing_ip":
-        del architecture["components"][2]["interfaces"][0]["ipv4"]
+        architecture["devices"][2]["network"]["ip_address"] = None
         code = "missing_ip_address"
-    elif issue == "prefix":
-        architecture["components"][0]["interfaces"][0]["ipv4"] = "10.10.10.10"
-        code = "missing_ip_prefix"
+    elif issue == "invalid_prefix":
+        architecture["devices"][0]["network"]["prefix_length"] = 40
+        code = "invalid_prefix_length"
     elif issue == "bad_ip":
-        architecture["components"][0]["interfaces"][0]["ipv4"] = "999.10.10.10/24"
+        architecture["devices"][0]["network"]["ip_address"] = "999.10.10.10"
         code = "invalid_ip_address"
     elif issue == "unknown_endpoint":
-        architecture["edges"][0]["source"]["component"] = "ghost"
-        code = "unknown_component"
-    elif issue == "unknown_interface":
-        architecture["edges"][0]["source"]["interface"] = "ghost"
-        code = "unknown_interface"
-    elif issue == "missing_edge_id":
-        del architecture["edges"][0]["id"]
-        code = "missing_edge_id"
-    elif issue == "reused_port":
-        extra = deepcopy(architecture["edges"][0])
-        extra["id"] = "extra-cable"
-        architecture["edges"].append(extra)
-        code = "interface_reused"
+        architecture["links"][0]["source"] = "ghost"
+        code = "unknown_device"
+    elif issue == "missing_link_id":
+        del architecture["links"][0]["id"]
+        code = "missing_link_id"
     else:
-        architecture["components"].append(
-            {"id": "Alone", "type": "pc", "interfaces": [{"id": "eth0", "ipv4": "10.9.0.2/24"}]}
+        architecture["devices"].append(
+            {
+                "id": "Alone",
+                "type": "pc",
+                "name": "Alone",
+                "network": {
+                    "ip_address": "10.9.0.2",
+                    "prefix_length": 24,
+                    "subnet_mask": "255.255.255.0",
+                    "network_address": "10.9.0.0",
+                },
+            }
         )
-        code = "isolated_component"
+        code = "isolated_device"
     before = deepcopy(architecture)
     report = check_readiness(architecture)
     assert not report["ready"]
@@ -110,46 +110,129 @@ def test_required_fields_and_connectivity_block_translation(architecture, issue)
 
 
 def test_all_issues_are_reported_together(architecture):
-    del architecture["components"][0]["interfaces"][0]["ipv4"]
-    architecture["components"][2]["name"] = ""
-    architecture["components"].append(
-        {"id": "Alone", "type": "router", "interfaces": [{"id": "eth0"}]}
+    architecture["devices"][0]["network"]["ip_address"] = None
+    architecture["devices"][2]["name"] = ""
+    architecture["devices"].append(
+        {
+            "id": "Alone",
+            "type": "router",
+            "name": "Alone",
+            "network": {
+                "ip_address": "10.9.0.2",
+                "prefix_length": 24,
+                "subnet_mask": "255.255.255.0",
+                "network_address": "10.9.0.0",
+            },
+        }
     )
     report = check_readiness(architecture)
     codes = {e["code"] for e in report["errors"]}
-    assert {"missing_ip_address", "missing_component_name", "isolated_component"} <= codes
+    assert {"missing_ip_address", "missing_device_name", "isolated_device"} <= codes
 
 
-def test_switches_need_no_ip_and_intentional_routing_failures_remain_allowed(architecture):
-    for component in architecture["components"]:
-        if component["type"] == "router":
-            component["routing"]["protocols"] = []
-            component["routing"]["static_routes"] = []
-    architecture["edges"][2]["enabled"] = False
-    assert check_readiness(architecture)["ready"]
-
-
-def test_same_lan_hosts_need_no_gateway():
+def test_switch_needs_no_address():
     architecture = {
-        "components": [
-            {"id": "PC1", "type": "pc", "interfaces": [{"id": "eth0", "ipv4": "10.0.0.1/24"}]},
-            {"id": "PC2", "type": "pc", "interfaces": [{"id": "eth0", "ipv4": "10.0.0.2/24"}]},
-            {"id": "SW", "type": "switch", "interfaces": [{"id": "p1"}, {"id": "p2"}]},
+        "devices": [
+            {
+                "id": "d1",
+                "type": "pc",
+                "name": "PC1",
+                "network": {
+                    "ip_address": "10.0.0.1",
+                    "prefix_length": 24,
+                    "subnet_mask": "255.255.255.0",
+                    "network_address": "10.0.0.0",
+                },
+            },
+            {
+                "id": "d2",
+                "type": "switch",
+                "name": "SW1",
+                "network": {
+                    "ip_address": None,
+                    "prefix_length": None,
+                    "subnet_mask": None,
+                    "network_address": None,
+                },
+            },
         ],
-        "edges": [
+        "links": [
             {
-                "id": "e1",
-                "source": {"component": "PC1", "interface": "eth0"},
-                "target": {"component": "SW", "interface": "p1"},
-            },
-            {
-                "id": "e2",
-                "source": {"component": "PC2", "interface": "eth0"},
-                "target": {"component": "SW", "interface": "p2"},
-            },
+                "id": "l1",
+                "source": "d1",
+                "target": "d2",
+                "network": {
+                    "network_address": "10.0.0.0",
+                    "prefix_length": 24,
+                    "subnet_mask": "255.255.255.0",
+                },
+            }
         ],
     }
     assert check_readiness(architecture)["ready"]
+
+
+def test_pc_may_have_only_one_link(architecture):
+    # PC1 (device_1) already has one link; give it a second.
+    architecture["links"].append(
+        {
+            "id": "extra",
+            "source": "device_1",
+            "target": "device_4",
+            "network": {
+                "network_address": "192.168.1.0",
+                "prefix_length": 24,
+                "subnet_mask": "255.255.255.0",
+            },
+        }
+    )
+    report = check_readiness(architecture)
+    assert not report["ready"]
+    assert "too_many_links" in {e["code"] for e in report["errors"]}
+
+
+def test_router_or_server_may_have_several_links(architecture):
+    # R1 (device_3) already has one link; a second, same-subnet link to the
+    # (non-pc) server is fine. device_1 is a pc and is deliberately not reused
+    # here, since a pc is capped at one link.
+    architecture["links"].append(
+        {
+            "id": "extra",
+            "source": "device_3",
+            "target": "device_4",
+            "network": {
+                "network_address": "192.168.1.0",
+                "prefix_length": 24,
+                "subnet_mask": "255.255.255.0",
+            },
+        }
+    )
+    assert check_readiness(architecture)["ready"]
+
+
+def test_link_network_must_agree_with_a_connected_devices_address(architecture):
+    architecture["links"][1]["network"] = {
+        "network_address": "172.16.0.0",
+        "prefix_length": 30,
+        "subnet_mask": "255.255.255.252",
+    }
+    report = check_readiness(architecture)
+    assert not report["ready"]
+    assert "link_endpoint_subnet_mismatch" in {e["code"] for e in report["errors"]}
+
+
+def test_subnet_mask_must_match_prefix_length(architecture):
+    architecture["devices"][0]["network"]["subnet_mask"] = "255.255.255.128"
+    report = check_readiness(architecture)
+    assert not report["ready"]
+    assert "subnet_mask_mismatch" in {e["code"] for e in report["errors"]}
+
+
+def test_network_address_must_match_ip_and_prefix(architecture):
+    architecture["devices"][0]["network"]["network_address"] = "192.168.9.0"
+    report = check_readiness(architecture)
+    assert not report["ready"]
+    assert "network_address_mismatch" in {e["code"] for e in report["errors"]}
 
 
 def test_gate_runs_before_retriever_construction_and_model_client(monkeypatch):
@@ -188,26 +271,7 @@ def test_check_command_runs_offline_and_reports_readiness(
     captured = capsys.readouterr()
     assert not captured.err
     assert json.loads(captured.out)["ready"] is True
-    architecture["components"][0]["interfaces"][0].pop("ipv4")
+    architecture["devices"][0]["network"]["ip_address"] = None
     path.write_text(json.dumps(architecture))
     assert app.main(["check", "--input", str(path)]) == 2
     assert json.loads(capsys.readouterr().out)["ready"] is False
-
-
-@pytest.mark.parametrize(
-    "field,value,code",
-    [
-        ("cloud", {"provider": "azure"}, "unsupported_cloud_provider"),
-        ("cloud", {"provider": "gcp"}, "unsupported_cloud_provider"),
-        ("generation", {"profile": "aws_single_host_docker_v1"}, "unsupported_generation_settings"),
-        ("ansible", {"tasks": []}, "legacy_automation_field"),
-    ],
-)
-def test_out_of_scope_inputs_are_rejected_before_retrieval(
-    field, value, code, architecture, monkeypatch
-):
-    architecture[field] = value
-    monkeypatch.setattr(app, "KnowledgeRetriever", lambda: pytest.fail("Unexpected retrieval"))
-    with pytest.raises(ArchitectureNotReady) as error:
-        app.plan_architecture(architecture)
-    assert code in {item["code"] for item in error.value.report["errors"]}

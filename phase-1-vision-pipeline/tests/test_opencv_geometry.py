@@ -134,3 +134,13 @@ def test_short_slightly_tilted_fragment_merges_into_a_long_line():
 def test_reading_order_treats_thin_horizontal_items_with_jitter_as_one_row():
     cables = [("right", Rect(478, 178.2, 761, 178.6)), ("left", Rect(138, 179.9, 402, 180.1))]
     assert reading_order_key(cables) == ["left", "right"]
+
+
+def test_rect_iou():
+    a = Rect(0, 0, 10, 10)
+    assert a.iou(a) == 1.0
+    assert a.iou(Rect(20, 20, 30, 30)) == 0.0  # disjoint
+    assert a.iou(Rect(10, 0, 20, 10)) == 0.0  # touching edge, zero area overlap
+    b = Rect(5, 5, 15, 15)  # overlap 5x5=25, union 100+100-25=175
+    assert math.isclose(a.iou(b), 25 / 175)
+    assert a.iou(b) == b.iou(a)  # symmetric

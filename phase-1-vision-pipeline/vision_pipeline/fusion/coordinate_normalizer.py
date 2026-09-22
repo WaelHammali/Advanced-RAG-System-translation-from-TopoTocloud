@@ -77,6 +77,7 @@ def normalize_coordinates(
         b = fit(d.bbox, "device", d.id)
         if b is not None:
             devices.append(YoloDetection(d.id, d.cls, d.confidence, b))
+    devices = _deduplicate_devices(devices, thresholds.duplicate_detection_iou, warnings)
     texts = []
     for t in ocr.texts:
         b = fit(t.bbox, "text", t.id)
@@ -97,3 +98,36 @@ def normalize_coordinates(
     return NormalizedInputs(
         image=image, devices=devices, texts=texts, candidates=candidates, warnings=warnings
     )
+
+
+def _deduplicate_devices(
+    devices: list[YoloDetection], iou_threshold: float, warnings: list[dict]
+) -> list[YoloDetection]:
+    """Collapse near-duplicate detections of one physical device into one.
+
+    Two overlapping YOLO boxes for the same icon (e.g. classified once as "router" and once
+    as "switch") would otherwise leave every nearby text association "ambiguous" - the name and
+    address end up null on BOTH, even though the diagram clearly names the device. This runs
+    before any association, so it fixes the root cause instead of patching around it. The
+    higher-confidence detection is kept; the other is never silently discarded without a trace.
+    """
+    dropped: set[str] = set()
+    for d in sorted(devices, key=lambda x: (-x.confidence, x.id)):
+        if d.id in dropped:
+            continue
+        for other in devices:
+            if other.id == d.id or other.id in dropped:
+                continue
+            ov = d.bbox.iou(other.bbox)
+            if ov >= iou_threshold:
+                dropped.add(other.id)
+                warnings.append(
+                    {
+                        "code": "duplicate_device_detection_dropped",
+                        "kind": "device",
+                        "id": other.id,
+                        "kept_id": d.id,
+                        "iou": round(ov, 3),
+                    }
+                )
+    return [d for d in devices if d.id not in dropped]

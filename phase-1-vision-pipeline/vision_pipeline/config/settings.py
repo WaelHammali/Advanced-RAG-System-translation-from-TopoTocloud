@@ -35,6 +35,12 @@ class YoloSettings:
     #: "cpu", "cuda:0", ... ; None lets ultralytics choose
     device: str | None = None
     max_detections: int = 300
+    #: suppress overlapping boxes regardless of class, not only within the same class. A router
+    #: and a switch box both covering the same icon are one physical device detected twice, not
+    #: two devices - letting ultralytics' own NMS remove the weaker one here is cheaper than
+    #: catching it later (fusion.coordinate_normalizer does that too, detector-agnostically, as
+    #: a second, always-on layer of the same fix).
+    agnostic_nms: bool = True
 
 
 @dataclass

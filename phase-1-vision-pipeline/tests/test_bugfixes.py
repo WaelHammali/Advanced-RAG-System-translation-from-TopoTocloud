@@ -2,12 +2,19 @@
 
 1. A directly-read address was hidden from `network` (and therefore from topology.simple.json)
    whenever a stray, unresolved host suffix also happened to be near the same device.
+4. Two overlapping YOLO detections of one physical device (e.g. once as "router", once as
+   "switch") left every nearby text association "ambiguous", so the device ended up with no
+   name and no address at all.
 """
 
 from __future__ import annotations
 
 import helpers as h
 from helpers import device
+from vision_pipeline.config.thresholds import Thresholds
+from vision_pipeline.fusion.coordinate_normalizer import normalize_coordinates
+from vision_pipeline.geometry import Rect
+from vision_pipeline.schemas.raw import YoloDetection
 
 NULL_NET = {
     "ip_address": None,
@@ -76,3 +83,51 @@ def test_two_substantive_addresses_still_null_the_mirror():
     d = device(topo, "device_001")
     assert len(d["addresses"]) == 2
     assert d["network"] == NULL_NET
+
+
+# ================================================================== bug 4: duplicate YOLO
+# ================================================================== detections of one device
+
+
+def test_coordinate_normalizer_drops_the_lower_confidence_duplicate():
+    y = h.yolo([("router", (100, 100, 180, 180))], conf=0.97)
+    # a near-duplicate box for the SAME icon, misclassified and lower confidence
+    y.detections.append(YoloDetection("device_002", "switch", 0.55, Rect(103, 103, 183, 183)))
+    inp = normalize_coordinates(y, h.ocr([]), h.opencv(), Thresholds())
+    assert [d.id for d in inp.devices] == ["device_001"]
+    w = next(w for w in inp.warnings if w["code"] == "duplicate_device_detection_dropped")
+    assert w["id"] == "device_002" and w["kept_id"] == "device_001"
+    assert w["iou"] >= Thresholds().duplicate_detection_iou
+
+
+def test_coordinate_normalizer_keeps_two_genuinely_separate_devices():
+    y = h.yolo([("router", (100, 100, 180, 180)), ("pc", (500, 100, 580, 180))])
+    inp = normalize_coordinates(y, h.ocr([]), h.opencv(), Thresholds())
+    assert [d.id for d in inp.devices] == ["device_001", "device_002"]
+    assert not any(w["code"] == "duplicate_device_detection_dropped" for w in inp.warnings)
+
+
+def test_duplicate_detection_end_to_end_device_keeps_its_name_and_address():
+    y = h.yolo([("router", (100, 100, 180, 180))], conf=0.97)
+    y.detections.append(YoloDetection("device_002", "switch", 0.5, Rect(101, 101, 181, 181)))
+    texts = [("R1", (128, 186, 152, 202)), ("192.168.1.1/24", (100, 206, 180, 222))]
+    _, topo = h.run(y, h.ocr(texts), h.opencv())
+    assert len(topo["devices"]) == 1  # the duplicate never reaches the topology
+    d = topo["devices"][0]
+    assert d["type"] == "router"  # the higher-confidence detection wins
+    assert d["name"] == "R1"
+    assert d["network"]["ip_address"] == "192.168.1.1"
+
+
+def test_duplicate_detection_also_fixes_the_originally_reported_symptom():
+    # the exact scenario found during review: two overlapping boxes of DIFFERENT classes left
+    # BOTH devices completely blank ("ambiguous") before the fix.
+    y = h.yolo([("router", (100, 150, 180, 230))], conf=0.95)
+    y.detections.append(YoloDetection("device_002", "switch", 0.94, Rect(102, 152, 182, 232)))
+    y.detections.append(YoloDetection("device_003", "pc", 0.95, Rect(500, 150, 580, 230)))
+    texts = [("R1", (110, 236, 134, 252)), ("192.168.1.1/24", (95, 256, 185, 272))]
+    _, topo = h.run(y, h.ocr(texts), h.opencv())
+    assert len(topo["devices"]) == 2
+    named = [d for d in topo["devices"] if d["name"] is not None]
+    assert len(named) == 1
+    assert named[0]["name"] == "R1" and named[0]["network"]["ip_address"] == "192.168.1.1"

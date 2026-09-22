@@ -121,9 +121,16 @@ def _addresses(d: DeviceState) -> list[dict[str, Any]]:
 def _node(d: DeviceState) -> dict[str, Any]:
     det = d.det
     addrs = _addresses(d)
+    # a "host_suffix_only" entry carries no real network information (ip/mask both null) - it
+    # must not count against "this device has exactly one address" just because a stray,
+    # unresolved suffix happened to be nearby, or a good, directly-read IP gets hidden behind a
+    # null scalar `network` block for no reason. But if a bare suffix is the device's ONLY piece
+    # of information, it is still the single thing to show (Test E: host_suffix alone, ip null).
+    substantive = [a for a in addrs if a["ip_address"] is not None or a["subnet_mask"] is not None]
+    candidates = substantive or addrs
     mirror = {k: None for k in NETWORK_KEYS}
-    if len(addrs) == 1:
-        mirror = {k: addrs[0][k] for k in NETWORK_KEYS}
+    if len(candidates) == 1:
+        mirror = {k: candidates[0][k] for k in NETWORK_KEYS}
 
     name = d.name.text.normalized_text if d.name else None
     name_conf = _r(d.name.confidence) if d.name else None

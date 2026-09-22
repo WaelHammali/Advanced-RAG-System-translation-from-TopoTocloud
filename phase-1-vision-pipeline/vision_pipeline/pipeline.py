@@ -137,6 +137,7 @@ class Pipeline:
             self.settings.thresholds,
             graph_builder=build_graph,
             device_name_pattern=self.settings.device_name_pattern,
+            link_type_pattern=self.settings.link_type_pattern,
         )
         result = engine.run(yolo, ocr, cv)
         fusion_doc = result.to_document()

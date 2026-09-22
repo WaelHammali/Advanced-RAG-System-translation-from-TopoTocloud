@@ -155,9 +155,12 @@ class FusionEngine:
         parser: SemanticParser | None = None,
         graph_builder: Callable[[FusionResult], dict[str, Any]] | None = None,
         device_name_pattern: str | None = None,
+        link_type_pattern: str | None = None,
     ) -> None:
         self.thr = thresholds or Thresholds()
-        self.parser = parser or SemanticParser(self.thr.semantic, device_name_pattern)
+        self.parser = parser or SemanticParser(
+            self.thr.semantic, device_name_pattern, link_type_pattern
+        )
         self.graph_builder = graph_builder
 
     # ===================================================================== entry point

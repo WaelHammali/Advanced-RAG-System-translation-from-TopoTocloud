@@ -115,6 +115,10 @@ class Settings:
     output_dir: str = str(DEFAULT_OUTPUT_DIR)
     #: optional regex overriding the built-in device-name pattern
     device_name_pattern: str | None = None
+    #: optional regex overriding the built-in link-type/interface ignore list (Ethernet,
+    #: GigabitEthernet0/1, Gi0/1, Fa0/0, Vlan10, ...). Matching text is always classified
+    #: "unknown": never a device name, never grouped, never in topology.json.
+    link_type_pattern: str | None = None
     #: model class -> type name used in the minimal RAG file (topology.simple.json) only.
     #: topology.json keeps the model's own class name.
     device_type_aliases: dict[str, str] = field(default_factory=lambda: {"desktop": "pc"})

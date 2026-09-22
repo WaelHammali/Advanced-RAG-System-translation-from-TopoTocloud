@@ -1,20 +1,34 @@
-"""Regression tests for reported bugs, added one at a time as each is fixed.
+"""Regression tests for four reported bugs, plus the device-name-uniqueness feature.
 
 1. A directly-read address was hidden from `network` (and therefore from topology.simple.json)
    whenever a stray, unresolved host suffix also happened to be near the same device.
+2. A pipeline run that failed partway left the *previous* run's output files in place, looking
+   like a valid, current result.
+3. An unmasked or very busy image could make collinear segment merging exhaust memory (covered
+   in test_opencv_detector.py, since it needs the real OpenCV stage).
 4. Two overlapping YOLO detections of one physical device (e.g. once as "router", once as
    "switch") left every nearby text association "ambiguous", so the device ended up with no
    name and no address at all.
+5. (feature) two different devices that end up with the same name are disambiguated instead of
+   being left indistinguishable in the output.
 """
 
 from __future__ import annotations
 
+import json
+
 import helpers as h
+import pytest
 from helpers import device
 from vision_pipeline.config.thresholds import Thresholds
 from vision_pipeline.fusion.coordinate_normalizer import normalize_coordinates
 from vision_pipeline.geometry import Rect
 from vision_pipeline.schemas.raw import YoloDetection
+from vision_pipeline.topology.topology_builder import (
+    TopologyBuilder,
+    TopologyValidationError,
+    validate_topology,
+)
 
 NULL_NET = {
     "ip_address": None,
@@ -131,3 +145,60 @@ def test_duplicate_detection_also_fixes_the_originally_reported_symptom():
     named = [d for d in topo["devices"] if d["name"] is not None]
     assert len(named) == 1
     assert named[0]["name"] == "R1" and named[0]["network"]["ip_address"] == "192.168.1.1"
+
+
+# =========================================================== feature: unique device names
+
+
+def test_two_different_devices_named_the_same_are_disambiguated():
+    devs = [("router", (100, 100, 180, 180)), ("router", (500, 100, 580, 180))]
+    texts = [("R1", (128, 186, 152, 202)), ("R1", (528, 186, 552, 202))]
+    _, topo = h.run(h.yolo(devs), h.ocr(texts), h.opencv())
+    names = sorted(d["name"] for d in topo["devices"])
+    assert names == ["R1", "R1 (2)"]
+
+    winner = next(d for d in topo["devices"] if d["name"] == "R1")
+    loser = next(d for d in topo["devices"] if d["name"] == "R1 (2)")
+    assert "name_deduplicated" not in winner["flags"]
+    assert "name_deduplicated" in loser["flags"]
+    assert loser["provenance"]["name"]["deduplicated_from"] == "R1"
+    assert loser["provenance"]["name"]["collided_with_device_id"] == winner["id"]
+
+    # the RAG-facing minimal file inherits the same, already-unique names
+    simple = TopologyBuilder().build_simple(topo)
+    assert sorted(d["name"] for d in simple["devices"]) == ["R1", "R1 (2)"]
+
+
+def test_three_way_name_collision_gets_numbered_suffixes():
+    devs = [
+        ("router", (100, 100, 180, 180)),
+        ("router", (400, 100, 480, 180)),
+        ("router", (700, 100, 780, 180)),
+    ]
+    texts = [
+        ("R1", (128, 186, 152, 202)),
+        ("R1", (428, 186, 452, 202)),
+        ("R1", (728, 186, 752, 202)),
+    ]
+    _, topo = h.run(h.yolo(devs), h.ocr(texts), h.opencv())
+    assert sorted(d["name"] for d in topo["devices"]) == ["R1", "R1 (2)", "R1 (3)"]
+
+
+def test_devices_with_different_names_are_never_touched():
+    devs = [("router", (100, 100, 180, 180)), ("router", (500, 100, 580, 180))]
+    texts = [("R1", (128, 186, 152, 202)), ("R2", (528, 186, 552, 202))]
+    _, topo = h.run(h.yolo(devs), h.ocr(texts), h.opencv())
+    assert sorted(d["name"] for d in topo["devices"]) == ["R1", "R2"]
+    assert all("name_deduplicated" not in d["flags"] for d in topo["devices"])
+
+
+def test_validate_topology_rejects_a_duplicate_name():
+    _, topo = h.run(
+        h.yolo([("router", (100, 100, 180, 180))]),
+        h.ocr([("R1", (128, 186, 152, 202))]),
+        h.opencv(),
+    )
+    bad = json.loads(json.dumps(topo))
+    bad["devices"].append({**bad["devices"][0], "id": "device_999"})  # same name, different id
+    with pytest.raises(TopologyValidationError, match="duplicate device name"):
+        validate_topology(bad)

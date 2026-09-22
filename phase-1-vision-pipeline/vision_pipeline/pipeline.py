@@ -46,6 +46,27 @@ def output_paths(out_dir: str | Path) -> PipelinePaths:
     )
 
 
+def clear_outputs(paths: PipelinePaths) -> None:
+    """Remove every output file of a previous run before a new one starts.
+
+    Without this, a run that fails partway (bad weights, a crash mid-stage, ...) leaves the
+    *previous* successful run's ``topology.json`` sitting there looking like a valid result for
+    whatever image is being processed now. Something reading the output directory has no way to
+    tell a fresh, complete result from a stale one - so a new attempt must never leave a partial
+    or old file set behind: either every file is quantifiably from the same successful run, or
+    none of them exist.
+    """
+    for p in (
+        paths.raw_yolo,
+        paths.raw_ocr,
+        paths.raw_opencv,
+        paths.fusion,
+        paths.topology,
+        paths.topology_simple,
+    ):
+        p.unlink(missing_ok=True)
+
+
 class Pipeline:
     def __init__(
         self,
@@ -137,6 +158,7 @@ class Pipeline:
             self.settings.thresholds,
             graph_builder=build_graph,
             device_name_pattern=self.settings.device_name_pattern,
+            link_type_pattern=self.settings.link_type_pattern,
         )
         result = engine.run(yolo, ocr, cv)
         fusion_doc = result.to_document()
@@ -160,6 +182,7 @@ class Pipeline:
     # -------------------------------------------------------------------- full run
     def run(self, image_path: str | Path, output_dir: str | Path | None = None) -> dict[str, Any]:
         paths = output_paths(output_dir or self.settings.output_dir)
+        clear_outputs(paths)  # never let a failed run leave a previous run's files behind
         image = load_image_bgr(image_path)  # fail early on a bad image, before loading any model
         log.info("image %s (%dx%d)", image_path, image.shape[1], image.shape[0])
         raw_yolo = self.run_yolo(image_path, paths.raw_yolo)

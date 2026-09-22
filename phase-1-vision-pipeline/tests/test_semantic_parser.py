@@ -116,6 +116,86 @@ def test_custom_name_pattern():
     assert p.parse(OcrText("t", "R1", 0.9, Rect(0, 0, 9, 9)))[0].semantic_type == "device_name"
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Ethernet",
+        "ethernet",
+        "Gigabit",
+        "GigabitEthernet0/1",
+        "GigabitEthernet0/0/1",
+        "FastEthernet0/1",
+        "TenGigabitEthernet1/1",
+        "Gi0/1",
+        "gi0/1",
+        "Fa0/0",
+        "Fa0/0/1",
+        "Se0/0/0",
+        "Lo0",
+        "Tu5",
+        "Vlan10",
+        "Vl10",
+        "Po1",
+        "Port-channel1",
+        "PortChannel2",
+        "Management0/0/0",
+        "Mgmt0",
+        "Eth0",
+        "Eth1/1",
+        "Trunk",
+        "Uplink",
+        "Downlink",
+        "Fiber",
+        "Copper",
+        "Optical",
+        "Fe0/1",
+        "Te0/1",
+        "Hu0/1",
+        "Ge0/1",
+        "Duplex",
+    ],
+)
+def test_link_type_and_interface_terms_are_always_ignored(text):
+    """These would otherwise match DEFAULT_DEVICE_NAME_PATTERN (or, unnumbered, would just be
+    unmatched); either way they must never become a device_name or anything else - interface
+    names are explicitly out of scope for this phase."""
+    (p,) = parse(text)
+    assert p.semantic_type == "unknown"
+    assert p.semantic_confidence is None
+    assert "ignored_link_type_or_interface_term" in p.notes
+    assert p.raw_text == text  # still preserved verbatim for traceability in fusion.json
+
+
+def test_link_type_ignore_does_not_shadow_real_device_names():
+    for text in ("R1", "R2", "PC1", "SW1", "SW-2", "Server10", "FW1", "Router5", "AP3"):
+        (p,) = parse(text)
+        assert p.semantic_type == "device_name", text
+
+
+def test_link_type_ignore_does_not_shadow_addresses():
+    for text, kind in (
+        ("192.168.1.1", "ipv4"),
+        ("192.168.1.1/24", "ipv4_cidr"),
+        ("255.255.255.0", "subnet_mask"),
+        (".1", "host_suffix"),
+    ):
+        (p,) = parse(text)
+        assert p.semantic_type == kind
+
+
+def test_link_type_pattern_is_configurable():
+    p = SemanticParser(link_type_pattern=r"^only-this-term$")
+    assert (
+        p.parse(OcrText("t", "only-this-term", 0.9, Rect(0, 0, 9, 9)))[0].semantic_type == "unknown"
+    )
+    # with a narrower override, "Gi0/1" is no longer in the ignore list...
+    assert (
+        p.parse(OcrText("t", "Gi0/1", 0.9, Rect(0, 0, 9, 9)))[0].semantic_type == "unknown"
+    )  # no slash match anyway
+    # ...but a bare abbreviation that used to be ignored now falls through to device_name
+    assert p.parse(OcrText("t", "Se0", 0.9, Rect(0, 0, 9, 9)))[0].semantic_type == "device_name"
+
+
 def test_axis_angle_from_polygon():
     (p,) = parse(
         "192.168.1.0/24", box=(0, 0, 20, 100), polygon=[(0, 0), (0, 100), (20, 100), (20, 0)]

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import helpers as h
 from helpers import device
 from vision_pipeline.config.thresholds import GroupingThresholds
@@ -304,3 +306,35 @@ def test_thresholds_are_configurable_not_hardcoded():
         h.yolo([("router", (100, 100, 180, 180))]), h.ocr(texts), h.opencv()
     )
     assert TopologyBuilder().build(res.to_document())["devices"][0]["name"] is None
+
+
+def test_link_type_labels_near_a_device_are_ignored_end_to_end():
+    # "GigabitEthernet0/1" sits where an address would normally be grouped from, "Fa0/0" and
+    # "Ethernet" sit near the two devices; none of it may become a name, an address, or leak
+    # into topology.json - only the real name and IP may survive.
+    dev = [("router", (100, 150, 180, 230)), ("pc", (500, 150, 580, 230))]
+    cable = [(180.0, 190.0), (500.0, 190.0)]
+    texts = [
+        ("R1", (110, 236, 134, 252)),
+        ("192.168.1.1/24", (95, 256, 185, 272)),
+        ("GigabitEthernet0/1", (90, 274, 230, 290)),
+        ("PC1", (525, 236, 555, 252)),
+        ("Fa0/0", (505, 164, 545, 180)),
+        ("Ethernet", (300, 120, 360, 136)),
+    ]
+    res, topo = h.run(h.yolo(dev), h.ocr(texts), h.opencv([h.link(cable)]))
+
+    r1, pc1 = device(topo, "device_001"), device(topo, "device_002")
+    assert r1["name"] == "R1" and r1["network"]["ip_address"] == "192.168.1.1"
+    assert pc1["name"] == "PC1"
+    assert topo["unresolved"] == []
+    dump = json.dumps(topo)
+    assert "GigabitEthernet" not in dump and "Fa0/0" not in dump and "Ethernet" not in dump
+
+    ignored = [
+        c
+        for c in res.to_document()["ocr_classifications"]
+        if "ignored_link_type_or_interface_term" in c["notes"]
+    ]
+    assert {c["raw_text"] for c in ignored} == {"GigabitEthernet0/1", "Fa0/0", "Ethernet"}
+    assert all(c["semantic_type"] == "unknown" for c in ignored)

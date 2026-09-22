@@ -11,9 +11,15 @@ Strategy, applied in this order to the whitespace-normalised text:
                        contiguous (and not 0.0.0.0) -> ``subnet_mask`` (+ prefix length)
                        otherwise                    -> ``ipv4``
 3. ``host_suffix`` - ``.N`` with N in 0..255.
-4. ``device_name`` - letters + optional ``-``/``_`` + digits (``R1``, ``PC1``, ``SW-2``,
+4. link/interface vocabulary ("Ethernet", "GigabitEthernet0/1", "Gi0/1", "Fa0/0", "Se0",
+   "Vlan10", "Port-channel1", ...) is always ``unknown``, checked before ``device_name`` so
+   it can never be mistaken for one. Interface names are explicitly out of scope for this
+   phase (see the phase-1 spec); this keeps them from leaking in as a side effect of the
+   device-name pattern instead of a deliberate decision. Vocabulary and pattern are
+   configurable (``link_type_pattern``).
+5. ``device_name`` - letters + optional ``-``/``_`` + digits (``R1``, ``PC1``, ``SW-2``,
                      ``Server10``). Pattern is configurable.
-5. anything else   -> ``unknown`` (never forced).
+6. anything else   -> ``unknown`` (never forced).
 
 Two conservative repairs, both flagged in ``notes`` and both lowering the semantic
 confidence: (a) whitespace touching a ``.`` or ``/`` is removed ("192.168.1. 1"), and
@@ -46,6 +52,19 @@ from .address_normalizer import (
 SEMANTIC_TYPES = ("device_name", "ipv4", "ipv4_cidr", "subnet_mask", "host_suffix", "unknown")
 
 DEFAULT_DEVICE_NAME_PATTERN = r"^[A-Za-z]{1,12}[-_]?\d{1,4}$"
+
+#: link-type / interface vocabulary that must always be ignored (classified ``unknown``),
+#: even though the abbreviated forms ("Gi0/1", "Fa0/0", "Se0", "Vl10", "Po1", "Lo0", "Tu5")
+#: would otherwise match ``DEFAULT_DEVICE_NAME_PATTERN``. Full words (case-insensitive) are
+#: matched with or without a trailing interface number, so bare "Ethernet" / "Gigabit" /
+#: "Trunk" are also ignored, not just numbered interfaces.
+DEFAULT_LINK_TYPE_PATTERN = (
+    r"^(?:gigabitethernet|tengigabitethernet|hundredgigabitethernet|fastethernet|"
+    r"tengige|hundredgige|gigabit|ethernet|fiber|copper|optical|serial|loopback|"
+    r"tunnel|vlan|port-?channel|management|mgmt|trunk|uplink|downlink|duplex|"
+    r"eth|gi|ge|gig|fa|fe|te|hu|se|lo|tu|po|vl)"
+    r"[-_]?\d{0,4}(?:/\d{1,4}){0,3}(?:\.\d{1,4})?$"
+)
 
 _DOT_SLASH_WS = re.compile(r"\s*([./])\s*")
 
@@ -125,10 +144,16 @@ class _Cls:
 
 class SemanticParser:
     def __init__(
-        self, confidence: SemanticConfidence | None = None, device_name_pattern: str | None = None
+        self,
+        confidence: SemanticConfidence | None = None,
+        device_name_pattern: str | None = None,
+        link_type_pattern: str | None = None,
     ) -> None:
         self.conf = confidence or SemanticConfidence()
         self._name_re = re.compile(device_name_pattern or DEFAULT_DEVICE_NAME_PATTERN)
+        self._link_type_re = re.compile(
+            link_type_pattern or DEFAULT_LINK_TYPE_PATTERN, re.IGNORECASE
+        )
 
     # ------------------------------------------------------------------ single token
     def classify_text(self, text: str) -> _Cls:
@@ -144,9 +169,14 @@ class SemanticParser:
             return _Cls("ipv4", self.conf.ipv4, address=normalize_ip_only(text))
         if parse_host_suffix(text) is not None:
             return _Cls("host_suffix", self.conf.host_suffix, host_suffix=text)
+        if self._link_type_re.match(text):  # checked before device_name: never a device name
+            return _Cls("unknown", None)
         if self._name_re.match(text):
             return _Cls("device_name", self.conf.device_name)
         return _Cls("unknown", None)
+
+    def is_ignored_link_type(self, text: str) -> bool:
+        return self._link_type_re.match(text) is not None
 
     # --------------------------------------------------------------------- OCR region
     def parse(self, item: OcrText) -> list[ParsedText]:
@@ -198,7 +228,8 @@ class SemanticParser:
                     )
                 return out
 
-        return [self._make(item.id, norm, direct, item.bbox, **base)]
+        notes = ["ignored_link_type_or_interface_term"] if self.is_ignored_link_type(norm) else []
+        return [self._make(item.id, norm, direct, item.bbox, notes=notes, **base)]
 
     def parse_all(self, items: list[OcrText]) -> list[ParsedText]:
         out: list[ParsedText] = []

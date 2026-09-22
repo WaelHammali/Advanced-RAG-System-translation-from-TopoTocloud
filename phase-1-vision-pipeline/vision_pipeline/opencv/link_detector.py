@@ -56,6 +56,13 @@ class LinkDetector:
             raw = _drop_inside(raw, prep.device_rects, cfg.inside_device_tolerance_px)
         stats["after_inside_device_filter"] = len(raw)
 
+        if cfg.max_segments_for_merge and len(raw) > cfg.max_segments_for_merge:
+            # merge_collinear is O(n^2) in memory; an unmasked or very busy image can otherwise
+            # exhaust memory (observed ~7GB at ~9,000 segments). Keep the longest segments -
+            # real cables are long, incidental noise is short - and say so, never silently.
+            stats["segments_dropped_scale_cap"] = len(raw) - cfg.max_segments_for_merge
+            raw = sorted(raw, key=seg_length, reverse=True)[: cfg.max_segments_for_merge]
+
         merged = merge_collinear(
             raw,
             angle_tol_deg=cfg.merge_angle_tol_deg,

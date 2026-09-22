@@ -104,6 +104,7 @@ class YoloDetector:
             iou=s.iou,
             imgsz=s.image_size,
             max_det=s.max_detections,
+            agnostic_nms=s.agnostic_nms,
             verbose=False,
         )
         if s.device:

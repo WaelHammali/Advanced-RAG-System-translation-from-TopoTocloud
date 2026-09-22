@@ -192,6 +192,11 @@ class Thresholds:
     resolver: ResolverThresholds = field(default_factory=ResolverThresholds)
     #: coordinates may exceed the image by this many pixels before a warning is raised
     bbox_out_of_bounds_tolerance_px: float = 4.0
+    #: two YOLO detections at or above this box IoU are treated as one physical device
+    #: detected twice (e.g. once as "router", once as "switch"); the lower-confidence one is
+    #: dropped in pass 1, before any text association, so it never leaves both duplicates
+    #: with a null name/address as "ambiguous"
+    duplicate_detection_iou: float = 0.7
 
 
 # ------------------------------------------------------------------------ (de)serialise

@@ -114,6 +114,27 @@ def test_pipeline_without_any_diagram_content_gives_an_empty_but_valid_topology(
     assert topo["devices"] == [] and topo["links"] == [] and topo["unresolved"] == []
 
 
+def test_failed_rerun_clears_the_previous_run_output_instead_of_leaving_it_stale(tmp_path):
+    path, fy, fo = build(tmp_path)
+    out = tmp_path / "outputs"
+    Pipeline(Settings(), yolo_detector=fy, ocr_detector=fo).run(path, out)
+    files = ("raw_yolo", "raw_ocr", "raw_opencv", "fusion", "topology", "topology.simple")
+    for name in files:
+        assert (out / f"{name}.json").is_file(), name
+
+    class FailingYolo:
+        def detect(self, image_path):
+            raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError, match="boom"):
+        Pipeline(Settings(), yolo_detector=FailingYolo(), ocr_detector=fo).run(path, out)
+
+    for name in files:
+        assert not (out / f"{name}.json").exists(), (
+            f"{name}.json from the earlier successful run is still here after a failed rerun"
+        )
+
+
 def test_outputs_validate_against_the_json_schemas(tmp_path):
     jsonschema = pytest.importorskip("jsonschema")
     from pathlib import Path

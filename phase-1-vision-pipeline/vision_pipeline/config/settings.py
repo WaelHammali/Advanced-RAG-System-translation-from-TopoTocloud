@@ -35,6 +35,12 @@ class YoloSettings:
     #: "cpu", "cuda:0", ... ; None lets ultralytics choose
     device: str | None = None
     max_detections: int = 300
+    #: suppress overlapping boxes regardless of class, not only within the same class. A router
+    #: and a switch box both covering the same icon are one physical device detected twice, not
+    #: two devices - letting ultralytics' own NMS remove the weaker one here is cheaper than
+    #: catching it later (fusion.coordinate_normalizer does that too, detector-agnostically, as
+    #: a second, always-on layer of the same fix).
+    agnostic_nms: bool = True
 
 
 @dataclass
@@ -79,6 +85,11 @@ class OpenCVSettings:
     #: segments fully inside a device bbox are icon outlines, not cables
     drop_segments_inside_devices: bool = True
     inside_device_tolerance_px: float = 2.0
+    #: collinear merging compares every raw segment pair, i.e. O(n^2) memory (~7GB observed at
+    #: ~9,000 segments on an unmasked 5000x3500 image). Above this count, only the longest
+    #: segments are kept before merging - real cables are long, incidental noise is short - and
+    #: the drop is recorded in raw_opencv.json's `stats`, never silent. 0 disables the cap.
+    max_segments_for_merge: int = 6000
     # -- collinear merging
     merge_angle_tol_deg: float = 4.0
     merge_perp_tol_px: float = 6.0
@@ -115,6 +126,10 @@ class Settings:
     output_dir: str = str(DEFAULT_OUTPUT_DIR)
     #: optional regex overriding the built-in device-name pattern
     device_name_pattern: str | None = None
+    #: optional regex overriding the built-in link-type/interface ignore list (Ethernet,
+    #: GigabitEthernet0/1, Gi0/1, Fa0/0, Vlan10, ...). Matching text is always classified
+    #: "unknown": never a device name, never grouped, never in topology.json.
+    link_type_pattern: str | None = None
     #: model class -> type name used in the minimal RAG file (topology.simple.json) only.
     #: topology.json keeps the model's own class name.
     device_type_aliases: dict[str, str] = field(default_factory=lambda: {"desktop": "pc"})

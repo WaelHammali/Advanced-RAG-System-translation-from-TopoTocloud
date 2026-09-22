@@ -31,6 +31,7 @@ def build_graph(r: FusionResult) -> dict[str, Any]:
     penalty = r.thresholds.link.missing_endpoint_penalty
     nodes = [_node(r.devices[i]) for i in sorted(r.devices)]
     edges = [_edge(r, lk, penalty) for lk in r.links.values()]
+    _deduplicate_device_names(nodes)
     return {"nodes": nodes, "edges": edges}
 
 
@@ -121,9 +122,16 @@ def _addresses(d: DeviceState) -> list[dict[str, Any]]:
 def _node(d: DeviceState) -> dict[str, Any]:
     det = d.det
     addrs = _addresses(d)
+    # a "host_suffix_only" entry carries no real network information (ip/mask both null) - it
+    # must not count against "this device has exactly one address" just because a stray,
+    # unresolved suffix happened to be nearby, or a good, directly-read IP gets hidden behind a
+    # null scalar `network` block for no reason. But if a bare suffix is the device's ONLY piece
+    # of information, it is still the single thing to show (Test E: host_suffix alone, ip null).
+    substantive = [a for a in addrs if a["ip_address"] is not None or a["subnet_mask"] is not None]
+    candidates = substantive or addrs
     mirror = {k: None for k in NETWORK_KEYS}
-    if len(addrs) == 1:
-        mirror = {k: addrs[0][k] for k in NETWORK_KEYS}
+    if len(candidates) == 1:
+        mirror = {k: candidates[0][k] for k in NETWORK_KEYS}
 
     name = d.name.text.normalized_text if d.name else None
     name_conf = _r(d.name.confidence) if d.name else None
@@ -241,3 +249,43 @@ def _edge(r: FusionResult, lk: LinkState, penalty: float) -> dict[str, Any]:
 
 def _pt(p: tuple[float, float] | None) -> list[float] | None:
     return None if p is None else [round(p[0], 2), round(p[1], 2)]
+
+
+# --------------------------------------------------------------------------- name uniqueness
+
+
+def _deduplicate_device_names(nodes: list[dict[str, Any]]) -> None:
+    """Two different devices must never end up with the same name in the output.
+
+    This happens when a label was genuinely written twice in the diagram (a real diagram
+    mistake) or misread onto the wrong device. Rather than leave the collision in place - which
+    would make the two devices indistinguishable downstream - keep the name on whichever device
+    it fits best (highest name-association confidence, device id as a deterministic tie-break)
+    and disambiguate the others with a " (2)", " (3)", ... suffix. The original detected name is
+    never lost: it is kept in `provenance.name.deduplicated_from` and the device is flagged.
+    """
+    used = {n["name"] for n in nodes if n["name"] is not None}
+    by_name: dict[str, list[dict[str, Any]]] = {}
+    for n in nodes:
+        if n["name"] is not None:
+            by_name.setdefault(n["name"], []).append(n)
+    for name, group in by_name.items():
+        if len(group) < 2:
+            continue
+        group.sort(key=lambda n: (-(n["confidence"]["name"] or 0.0), n["id"]))
+        winner = group[0]
+        for n in group[1:]:
+            original = n["name"]
+            k = 2
+            candidate = f"{original} ({k})"
+            while candidate in used:
+                k += 1
+                candidate = f"{original} ({k})"
+            used.add(candidate)
+            n["name"] = candidate
+            n["flags"] = sorted({*n["flags"], "name_deduplicated"})
+            n["provenance"]["name"] = {
+                **n["provenance"].get("name", {}),
+                "deduplicated_from": original,
+                "collided_with_device_id": winner["id"],
+            }

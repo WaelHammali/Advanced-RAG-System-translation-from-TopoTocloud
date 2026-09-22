@@ -172,6 +172,11 @@ def validate_topology(t: dict[str, Any]) -> None:
     lids = [lk["id"] for lk in t["links"]]
     if len(lids) != len(set(lids)):
         raise TopologyValidationError("duplicate link ids")
+    names = [d["name"] for d in t["devices"] if d["name"] is not None]
+    if len(names) != len(set(names)):
+        raise TopologyValidationError(
+            "duplicate device name (graph_builder should have deduplicated it)"
+        )
     known = set(ids)
     for lk in t["links"]:
         for end in ("source", "target"):

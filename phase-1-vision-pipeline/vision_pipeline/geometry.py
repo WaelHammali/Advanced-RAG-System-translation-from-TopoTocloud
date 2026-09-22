@@ -113,6 +113,14 @@ class Rect:
         dy = max(self.y1 - p[1], 0.0, p[1] - self.y2)
         return math.hypot(dx, dy)
 
+    def iou(self, other: Rect) -> float:
+        """Intersection over union, 0 when the rectangles do not overlap."""
+        iw = max(0.0, min(self.x2, other.x2) - max(self.x1, other.x1))
+        ih = max(0.0, min(self.y2, other.y2) - max(self.y1, other.y1))
+        inter = iw * ih
+        union = self.w * self.h + other.w * other.h - inter
+        return inter / union if union > 0 else 0.0
+
 
 # ----------------------------------------------------------------------------- vectors
 

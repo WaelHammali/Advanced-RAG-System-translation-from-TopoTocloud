@@ -93,3 +93,30 @@ def test_unmasked_run_reports_undetermined_endpoints_instead_of_inventing_them()
     for c in raw.candidates:
         if c.path_type in ("branched", "cycle"):
             assert c.start is None and c.end is None
+
+
+def test_segment_cap_bounds_memory_on_a_busy_image_instead_of_crashing():
+    # collinear merging is O(n^2) in memory (observed ~7GB at ~9,000 raw segments on a large,
+    # unmasked real image). Above the cap, only the longest segments are kept before merging -
+    # real cables are long, incidental noise is short - and the drop is recorded, never silent.
+    img = diagram()
+    rng = np.random.default_rng(0)
+    for _ in range(150):  # a lot of short noise lines, comfortably over a tiny test cap
+        x1, y1 = int(rng.integers(0, 600)), int(rng.integers(0, 300))
+        x2, y2 = x1 + int(rng.integers(-12, 12)), y1 + int(rng.integers(-12, 12))
+        cv2.line(img, (x1, y1), (x2, y2), (0, 0, 0), 1)
+    raw = detect(
+        img,
+        MaskRegions(),
+        max_segments_for_merge=25,
+        hough_min_line_length=5,
+        min_segment_length_px=3,
+    )
+    assert raw.stats["after_inside_device_filter"] > 25
+    assert raw.stats["segments_dropped_scale_cap"] == raw.stats["after_inside_device_filter"] - 25
+    assert raw.candidates, "should still produce a usable (if degraded) result, not just give up"
+
+
+def test_segment_cap_does_not_trigger_on_a_normal_diagram():
+    raw = detect(diagram(), FULL)  # far fewer segments than the default 6000 cap
+    assert "segments_dropped_scale_cap" not in raw.stats

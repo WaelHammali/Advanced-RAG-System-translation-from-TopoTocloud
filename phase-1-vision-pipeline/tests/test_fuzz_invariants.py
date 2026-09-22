@@ -191,9 +191,12 @@ def test_larger_jitter_degrades_to_null_not_to_wrong_values():
     wrong = 0
     for seed in range(200):
         devs, texts, links = jitter_d(seed, amount=30)
-        texts = [
-            t for t in texts if t[0] in ("R1", "PC1", ".1", ".2", "192.168.1.0/24")
-        ]  # no distractors
+        # jitter_d always adds exactly these 5 canonical texts first, then 0-5 random
+        # distractors: slicing by position (not by string) actually excludes the distractors -
+        # a distractor can coincidentally draw the same string (e.g. another ".2" or "R1" from
+        # POOL) and legitimately resolve against a device, which a value-based filter would let
+        # back in and then wrongly flag as the pipeline attaching the wrong device's suffix
+        texts = texts[:5]
         _, topo = h.run(h.yolo(devs), h.ocr(texts), h.opencv(links))
         r1, pc1 = topo["devices"]
         for dev, expect in ((r1, "192.168.1.1"), (pc1, "192.168.1.2")):

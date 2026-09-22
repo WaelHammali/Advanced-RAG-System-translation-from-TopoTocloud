@@ -79,6 +79,11 @@ class OpenCVSettings:
     #: segments fully inside a device bbox are icon outlines, not cables
     drop_segments_inside_devices: bool = True
     inside_device_tolerance_px: float = 2.0
+    #: collinear merging compares every raw segment pair, i.e. O(n^2) memory (~7GB observed at
+    #: ~9,000 segments on an unmasked 5000x3500 image). Above this count, only the longest
+    #: segments are kept before merging - real cables are long, incidental noise is short - and
+    #: the drop is recorded in raw_opencv.json's `stats`, never silent. 0 disables the cap.
+    max_segments_for_merge: int = 6000
     # -- collinear merging
     merge_angle_tol_deg: float = 4.0
     merge_perp_tol_px: float = 6.0

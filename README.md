@@ -1,12 +1,12 @@
 # Network architecture JSON → AWS plan JSON
 
 This application validates a network topology, retrieves networking knowledge,
-and uses Groq to translate it into a structured AWS architecture plan. It preserves
-source devices, links and addressing. It returns JSON only and does not provision
+and uses Groq to translate it into a structured AWS architecture plan. It enforces exact
+source devices, links, addressing and future configuration targets. It returns JSON only and does not provision
 infrastructure or execute configuration.
 
 ```text
-architecture.json → readiness checks → knowledge retrieval → Groq → aws_plan.json
+architecture.json → readiness/corrections → hosting policy + RAG → checked aws_plan.json
 ```
 
 ## Run
@@ -51,7 +51,7 @@ See the [JSON contract](docs/json-contract.md) and the
 
 Incomplete input is rejected before retrieval or model calls. Single isolated
 devices remain blocked under the project's policy; directly connected PCs are
-valid. Readiness does not prove that a model's plan is correct or deployable.
+valid. Nested output checks reject altered topology and hosting choices. Live behavior still requires external runtime implementation and packet tests.
 
 `check` returns a readiness report, with exit 0 for ready or 2 for incomplete.
 `plan` and `context` return readiness errors on stderr with exit 2; other runtime
@@ -91,3 +91,22 @@ python -m pytest -q
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Deployment generators and archived legacy
 code have been removed; their previous versions remain available in Git history.
+
+## Clarification and later configuration
+
+`check` returns blocking `(entity_id, JSON_pointer, message)` tuples alongside
+`errors`, separate warnings and a source revision. `correct` accepts explicit
+replacement-value tuples for that revision and returns corrected architecture plus
+new validation. See [the correction API](docs/validation.md). No conversation agent
+is implemented here.
+
+OSPF, RIP, gateways, nginx and other services are collected later by your external
+NLP agent. Missing configuration is not a topology validation error. The initial
+AWS plan includes stable worker/runtime/interface targets and leaves added routes,
+protocols and services empty. Downstream generators must implement plan contract
+1.0 and realize the isolated topology before applying those later operations.
+
+The [educational hosting profile](docs/hosting.md) selects one shared worker from
+a reviewed price catalog with explicit capacity and cost limits. It records
+estimates and unresolved dependencies; it does not promise free AWS or the current
+global cheapest instance.

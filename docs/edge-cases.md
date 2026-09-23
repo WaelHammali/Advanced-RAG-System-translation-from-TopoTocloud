@@ -57,10 +57,7 @@ Switch behavior is described in the
 [Linux bridge documentation](https://docs.kernel.org/networking/bridge.html).
 Cloud management connectivity must not supply a hidden path between lab devices.
 
-This contract has no routing, service or automation configuration to validate:
-the upstream vision pipeline that produces this JSON cannot detect any of that
-from a topology diagram, so there is nothing here to preserve or reject beyond
-device/link identity and addressing.
+This initial contract has no routing, service or automation configuration to validate. Those settings are intentionally collected later by the external NLP agent and applied through a separate generator. Missing OSPF/RIP/services never blocks topology readiness.
 
 ## JSON boundary
 
@@ -75,9 +72,9 @@ device/link identity and addressing.
   `source_ip`/`target_ip` (null only at a switch/bridge/hub end).
 - Unknown extension fields remain unchanged if they contain valid JSON. Passing
   readiness does not claim those fields have a recognized schema or implementation.
-- All detected readiness errors are collected in the existing `errors` envelope.
+- All detected readiness errors are collected in `errors` and exact-path `issues` tuples; advisory findings are separate `warnings`.
   Invalid JSON values stop deeper validation. No RAG request is sent on failure.
-- Output is checked for the AWS provider and the required JSON envelope. No deployment
+- Output is checked recursively against source-derived device/link/runtime and hosting requirements. No deployment
   project or executable artifact is published.
 
 ## Reproducible examples and evidence

@@ -5,6 +5,7 @@
     python -m vision_pipeline ocr    --image diagram.png            -> raw_ocr.json
     python -m vision_pipeline opencv --image diagram.png [--raw-yolo F --raw-ocr F] -> raw_opencv.json
     python -m vision_pipeline fuse   [--raw-yolo F --raw-ocr F --raw-opencv F]      -> fusion.json + topology.json + topology.simple.json
+    python -m vision_pipeline validate [--input topology.simple.json] [--allow-ipv6-only]  -> report, exit 1 if invalid
     python -m vision_pipeline print-config
 
 ``run`` is the default sub-command, so ``python -m vision_pipeline --image diagram.png`` works.
@@ -21,7 +22,7 @@ from .config.settings import Settings
 from .pipeline import Pipeline, output_paths
 from .schemas.raw import RawOcr, RawYolo, read_json
 
-COMMANDS = ("run", "yolo", "ocr", "opencv", "fuse", "print-config")
+COMMANDS = ("run", "yolo", "ocr", "opencv", "fuse", "validate", "print-config")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -71,6 +72,20 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--raw-yolo")
     p.add_argument("--raw-ocr")
     p.add_argument("--raw-opencv")
+
+    p = sub.add_parser("validate", help="check topology.simple.json before it goes to the RAG")
+    common(p, image=False)
+    p.add_argument(
+        "--input", help="minimal topology to check (default: <output-dir>/topology.simple.json)"
+    )
+    p.add_argument(
+        "--report", help="also write the report here (default: <output-dir>/validation.json)"
+    )
+    p.add_argument(
+        "--allow-ipv6-only",
+        action="store_true",
+        help="accept devices/links that only have IPv6 (the RAG itself requires IPv4)",
+    )
 
     p = sub.add_parser("print-config", help="print the effective settings and thresholds as JSON")
     common(p, image=False)
@@ -130,7 +145,24 @@ def _dispatch(args: argparse.Namespace, settings: Settings) -> int:
             paths.topology,
             paths.topology_simple,
         )
+    elif args.command == "validate":
+        report = pipe.validate_file(
+            args.input or paths.topology_simple,
+            args.report or paths.validation,
+            require_ipv4=not args.allow_ipv6_only,
+        )
+        _print_report(report)
+        return 0 if report["valid"] else 1
     return 0
+
+
+def _print_report(report: dict) -> None:
+    print(
+        f"{report['status'].upper()}: {report['summary']['errors']} error(s), "
+        f"{report['summary']['warnings']} warning(s)"
+    )
+    for issue in report["errors"] + report["warnings"]:
+        print(f"  [{issue['severity']}] {issue['code']} at {issue['path']}: {issue['message']}")
 
 
 if __name__ == "__main__":

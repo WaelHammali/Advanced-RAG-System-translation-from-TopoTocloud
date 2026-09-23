@@ -49,6 +49,8 @@ def test_full_pipeline_writes_all_five_files_and_reconstructs_the_network(tmp_pa
     assert sw == {l1["id"]: "192.168.1.2", l2["id"]: "10.0.0.1"}
     assert by_type["switch"]["network"]["ip_address"] is None  # multi-homed: no scalar guess
     assert topo["unresolved"] == []
+    report = json.loads((out / "validation.json").read_text())
+    assert report["valid"] and [w["code"] for w in report["warnings"]] == ["layer2_device_routes"]
 
 
 def test_fuse_subcommand_rebuilds_topology_from_the_raw_files(tmp_path):
@@ -118,7 +120,15 @@ def test_failed_rerun_clears_the_previous_run_output_instead_of_leaving_it_stale
     path, fy, fo = build(tmp_path)
     out = tmp_path / "outputs"
     Pipeline(Settings(), yolo_detector=fy, ocr_detector=fo).run(path, out)
-    files = ("raw_yolo", "raw_ocr", "raw_opencv", "fusion", "topology", "topology.simple")
+    files = (
+        "raw_yolo",
+        "raw_ocr",
+        "raw_opencv",
+        "fusion",
+        "topology",
+        "topology.simple",
+        "validation",
+    )
     for name in files:
         assert (out / f"{name}.json").is_file(), name
 

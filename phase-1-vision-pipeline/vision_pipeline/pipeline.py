@@ -4,6 +4,8 @@
     image -> PaddleOCR -> raw_ocr.json   --+--> Fusion Engine -> fusion.json -> Topology Builder -> topology.json
     image -> OpenCV    -> raw_opencv.json -+     (reads the three JSON files back from disk)
 
+    topology.simple.json (the RAG input) -> validator -> validation.json (what is wrong, where)
+
 OpenCV optionally uses raw_yolo / raw_ocr rectangles as masks, so it runs after them.
 Detectors are injectable, so any of them can be replaced by anything implementing the same
 ``detect_array`` / ``detect`` contract and writing the standard raw schema.
@@ -22,11 +24,13 @@ from .image_io import load_image_bgr
 from .schemas.raw import RawOcr, RawOpenCV, RawYolo, read_json, write_json
 from .topology.graph_builder import build_graph
 from .topology.topology_builder import TopologyBuilder
+from .validation import validate
 
 log = logging.getLogger("vision_pipeline")
 
 RAW_YOLO, RAW_OCR, RAW_OPENCV = "raw_yolo.json", "raw_ocr.json", "raw_opencv.json"
 FUSION, TOPOLOGY, TOPOLOGY_SIMPLE = "fusion.json", "topology.json", "topology.simple.json"
+VALIDATION = "validation.json"
 
 
 @dataclass
@@ -37,12 +41,19 @@ class PipelinePaths:
     fusion: Path
     topology: Path
     topology_simple: Path
+    validation: Path
 
 
 def output_paths(out_dir: str | Path) -> PipelinePaths:
     d = Path(out_dir)
     return PipelinePaths(
-        d / RAW_YOLO, d / RAW_OCR, d / RAW_OPENCV, d / FUSION, d / TOPOLOGY, d / TOPOLOGY_SIMPLE
+        d / RAW_YOLO,
+        d / RAW_OCR,
+        d / RAW_OPENCV,
+        d / FUSION,
+        d / TOPOLOGY,
+        d / TOPOLOGY_SIMPLE,
+        d / VALIDATION,
     )
 
 
@@ -63,6 +74,7 @@ def clear_outputs(paths: PipelinePaths) -> None:
         paths.fusion,
         paths.topology,
         paths.topology_simple,
+        paths.validation,
     ):
         p.unlink(missing_ok=True)
 
@@ -149,8 +161,8 @@ class Pipeline:
     ) -> dict[str, Any]:
         """Fusion + Topology Builder from the three raw JSON files (the standard contract).
 
-        Writes topology.json (rich, stored) and topology.simple.json (minimal form for the RAG).
-        Returns the rich topology."""
+        Writes topology.json (rich, stored), topology.simple.json (minimal form for the RAG) and
+        validation.json (the pre-RAG check of that minimal form). Returns the rich topology."""
         yolo = RawYolo.from_dict(read_json(raw_yolo))
         ocr = RawOcr.from_dict(read_json(raw_ocr))
         cv = RawOpenCV.from_dict(read_json(raw_opencv))
@@ -167,7 +179,16 @@ class Pipeline:
         topology = builder.build(fusion_doc)  # the ONLY place topology.json is created
         builder.write(topology, topology_out)
         simple_out = topology_simple_out or Path(topology_out).with_name(TOPOLOGY_SIMPLE)
-        builder.write_simple(builder.build_simple(topology), simple_out)  # what the RAG receives
+        simple = builder.build_simple(topology)
+        builder.write_simple(simple, simple_out)  # what the RAG receives
+        report = validate(simple)
+        write_json(Path(simple_out).with_name(VALIDATION), report)
+        log.info(
+            "Validation: %s (%d errors, %d warnings)",
+            report["status"],
+            report["summary"]["errors"],
+            report["summary"]["warnings"],
+        )
         log.info(
             "Fusion -> %s ; Topology -> %s ; RAG input -> %s (%d devices, %d links, %d unresolved)",
             fusion_out,
@@ -178,6 +199,19 @@ class Pipeline:
             len(topology["unresolved"]),
         )
         return topology
+
+    def validate_file(
+        self,
+        simple_path: str | Path,
+        report_out: str | Path | None = None,
+        *,
+        require_ipv4: bool = True,
+    ) -> dict[str, Any]:
+        """Validate an existing topology.simple.json (e.g. after hand edits); optionally write the report."""
+        report = validate(read_json(simple_path), require_ipv4=require_ipv4)
+        if report_out is not None:
+            write_json(report_out, report)
+        return report
 
     # -------------------------------------------------------------------- full run
     def run(self, image_path: str | Path, output_dir: str | Path | None = None) -> dict[str, Any]:

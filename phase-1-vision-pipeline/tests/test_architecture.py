@@ -133,3 +133,19 @@ def test_no_llm_rag_or_iac_dependencies():
     for p in PKG.rglob("*.py"):
         for imp in imports_of(p):
             assert not imp.split(".")[0].lower().startswith(banned), f"{p.name}: {imp}"
+
+
+def test_validation_works_on_the_json_contract_only():
+    assert (
+        forbidden(
+            "validation",
+            [
+                "vision_pipeline.yolo",
+                "vision_pipeline.ocr",
+                "vision_pipeline.opencv",
+                "vision_pipeline.fusion",
+                "vision_pipeline.topology",
+            ],
+        )
+        == []
+    )

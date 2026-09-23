@@ -2,6 +2,7 @@
 Rule-ID: SEC-001
 Kind: rule
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: ACL, firewall, deny, allow, stateful, ICMP
 Applies: Source topology includes host filters, router ACLs or inline firewalls.
@@ -16,6 +17,7 @@ Related: SEC-002, SEC-003, VERIFY-001
 Rule-ID: SEC-002
 Kind: rule
 Mode: all
+Phase: configuration
 Status: target_specification
 Keywords: security group, NACL, outer packet, inner packet
 Applies: AWS carries encapsulated lab packets.
@@ -30,6 +32,7 @@ Related: BACKEND-003, SEC-001
 Rule-ID: SEC-003
 Kind: rule
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: ICMP echo, OSPF 89, RIP 520, SSH
 Applies: Creating or testing traffic filtering.

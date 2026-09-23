@@ -2,6 +2,7 @@
 Rule-ID: EX-PEERING
 Kind: example
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: two routers, VPC peering, transport
 Applies: R1 and R2 lab nodes are placed on workers in two peered VPCs.

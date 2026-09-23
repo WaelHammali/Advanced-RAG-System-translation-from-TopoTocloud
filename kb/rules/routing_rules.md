@@ -2,6 +2,7 @@
 Rule-ID: ROUTE-001
 Kind: rule
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: connected routes, one router, gateway, forwarding
 Applies: A router has working addressed interfaces in both endpoint LANs.
@@ -16,6 +17,7 @@ Related: EX-SINGLE, STATIC-001
 Rule-ID: ROUTE-002
 Kind: rule
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: longest prefix, default, route preference, return path
 Applies: Predicting reachability through routers.

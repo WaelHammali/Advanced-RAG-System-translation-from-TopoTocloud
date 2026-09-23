@@ -2,10 +2,11 @@
 Rule-ID: MAP-001
 Kind: rule
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: PC, server, router, switch, firewall, mapping
 Applies: Translating a physical network in behavioral_lab mode.
-Required: Host: isolated network stack. Router: isolated forwarding stack with requested routing. Switch: bridge with declared ports/VLANs. Firewall: policy at its declared point. AWS resources host transport.
+Required: Map PC/server/router to separate Linux network namespaces, switch/bridge to separate Linux bridges. Bind exact source links to stable runtime interfaces on the shared worker. Protocols/services are deferred. Unsupported types, including hub semantics, must fail the current profile.
 Forbidden: Do not equate router with VPC, switch with AWS subnet, or inline firewall with SG. Do not invent a lab router merely to own a VPC.
 Expected: No-router same-LAN input remains a lab without a router; router-dependent traffic traverses router stacks.
 Verify: Map every source object to its runtime and separate transport placement.
@@ -16,10 +17,11 @@ Related: BACKEND-001, L2-001
 Rule-ID: MAP-002
 Kind: rule
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: topology graph, chain, ring, disconnected, direct host
 Applies: A topology contains multiple routers, switch ports or disconnected components.
-Required: Represent links by endpoint interfaces. Keep separate router-to-host cables separate. Preserve source graph components, switch ports and cable identities regardless of worker placement.
+Required: Derive stable runtime endpoint interface IDs from each source link ID. Retain exact source device IDs and per-link IPs. Keep independent cables and disconnected groups separate even when they share one worker.
 Forbidden: Do not merge direct hosts into one LAN or connect every VPC because there are three routers.
 Expected: Disconnected components stay disconnected; a chain retains required intermediate routers unless an explicit alternative exists.
 Verify: Compare source/realized adjacency; probe forbidden pairs and declared faults.
@@ -30,6 +32,7 @@ Related: BACKEND-002, EX-ISOLATED, EX-DIRECT
 Rule-ID: MAP-003
 Kind: rule
 Mode: all
+Phase: configuration
 Status: target_specification
 Keywords: migration, emulation, cloud native, mode
 Applies: Selecting the translation's promised level of equivalence.

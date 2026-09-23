@@ -2,6 +2,7 @@
 Rule-ID: VERIFY-001
 Kind: rule
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: expected failure, pass, fail, unknown, unsupported
 Applies: Answering reachability questions or evaluating a lab.
@@ -16,6 +17,7 @@ Related: VERIFY-002, CORE-003
 Rule-ID: VERIFY-002
 Kind: rule
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: capture, traceroute, router down, route removal
 Applies: Checking equivalence beyond reachability.
@@ -30,6 +32,7 @@ Related: EX-TGW, EX-LAN, ROUTE-002
 Rule-ID: VERIFY-003
 Kind: rule
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: MTU, large ping, fragmentation, convergence
 Applies: Tunnels or dynamic routing are involved.

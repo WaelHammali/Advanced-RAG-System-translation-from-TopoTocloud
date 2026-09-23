@@ -2,6 +2,7 @@
 Rule-ID: AWS-001
 Kind: rule
 Mode: all
+Phase: configuration
 Status: target_specification
 Keywords: VPC, local route, appliance routing, bypass
 Applies: Using AWS routes alongside a behavioral network.
@@ -16,6 +17,7 @@ Related: BACKEND-003, MAP-003
 Rule-ID: AWS-002
 Kind: rule
 Mode: all
+Phase: configuration
 Status: target_specification
 Keywords: two routers, VPC peering, non-transitive
 Applies: Transport uses AWS VPC peering.
@@ -30,6 +32,7 @@ Related: EX-PEERING, BACKEND-003
 Rule-ID: AWS-003
 Kind: rule
 Mode: all
+Phase: configuration
 Status: target_specification
 Keywords: three routers, TGW, transit gateway, chain, disconnected
 Applies: Transport uses AWS Transit Gateway.
@@ -44,6 +47,7 @@ Related: EX-TGW, EX-ISOLATED
 Rule-ID: AWS-004
 Kind: rule
 Mode: all
+Phase: configuration
 Status: target_specification
 Keywords: ENI, interfaces, t3.medium, instance size
 Applies: Selecting native-router or overlay-worker capacity.

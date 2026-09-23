@@ -2,6 +2,7 @@
 Rule-ID: NAT-001
 Kind: rule
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: internet, outbound, NAT, default route
 Applies: Source intent explicitly requires external access or NAT.
@@ -16,6 +17,7 @@ Related: NAT-002, EX-NAT
 Rule-ID: NAT-002
 Kind: rule
 Mode: all
+Phase: configuration
 Status: target_specification
 Keywords: private subnet, zonal public NAT gateway, IGW
 Applies: The chosen transport/cloud-native egress uses a zonal public AWS NAT gateway.

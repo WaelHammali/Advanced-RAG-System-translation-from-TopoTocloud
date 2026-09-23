@@ -2,6 +2,7 @@
 Rule-ID: EX-VLAN
 Kind: example
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: same switch, VLAN 10, VLAN 20, same prefix
 Applies: PC1=10.10.10.10/24 is on SW1 access VLAN 10; PC2=10.10.10.20/24 is on SW1 access VLAN 20.

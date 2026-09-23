@@ -1,6 +1,6 @@
 # Knowledge ownership and maintenance
 
-Corpus version: 3.0.0.
+Corpus version: 4.0.0.
 
 `kb` is machine-facing domain knowledge. `docs` is human-facing application
 documentation. They are not interchangeable: the retriever recursively reads
@@ -37,7 +37,7 @@ different purposes; a text scenario is not accepted in place of architecture JSO
 ## Record format
 
 Every Markdown heading begins one atomic rule/example, with a stable Rule-ID,
-kind, mode, target status, keywords, applicability, requirements, prohibitions,
+kind, mode, phase, target status, keywords, applicability, requirements, prohibitions,
 expected behavior, verification notes, source IDs and related rule IDs. A record
 must fit the actual configured chunk limit. Do not put README-style guides in the
 KB: the integrity checker requires the rule-card format for every Markdown file.
@@ -47,6 +47,20 @@ cloud runtime. The [source register](../kb/sources.json) maps reference IDs to
 primary documentation. PROJECT identifies design requirements rather than
 independent platform evidence. References need review when relevant technologies
 change; the manifest does not verify remote source freshness.
+
+## Translation phase
+
+Every card has `Phase: topology` or `Phase: configuration`. The initial RAG only
+retrieves topology cards in behavioral/all mode. Protocol/service/operation cards
+remain reference material for the later stage; they are not instructions to
+configure a newly created topology. Unknown source fields cannot change the phase
+or select cloud-native migration. Device/link runtime mapping and isolation rules
+are mandatory context, independent of ranking or `top_k`.
+
+The conceptual scenarios still include configured-network cases. They document
+later behavioral expectations, not accepted initial configuration inputs or live
+provider evaluation results. Executable tests use the current devices/links JSON
+fixtures and explicitly assert topology preservation and deferred configuration.
 
 ## Updating knowledge
 

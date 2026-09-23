@@ -2,6 +2,7 @@
 Rule-ID: EX-DIRECT
 Kind: example
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: direct host, router ports, separate LAN
 Applies: PC1 connects R1:lan0 and PC2 connects R1:lan1 on distinct cables; no switch joins them.
@@ -16,6 +17,7 @@ Related: MAP-002, ROUTE-001
 Rule-ID: EX-PC-DIRECT
 Kind: example
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: two PCs, direct cable, no router, peer, same subnet
 Applies: PC1 eth0=10.0.0.1/24 and PC2 eth0=10.0.0.2/24 share one direct active cable with unique addresses and permitted ARP/ICMP.
@@ -30,10 +32,11 @@ Related: L2-001, ROUTE-001
 Rule-ID: EX-STANDALONE
 Kind: example
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: single PC, one router, isolated node, standalone, empty topology
 Applies: An architecture has a single component or an extra component with no valid link to another component.
-Required: The deterministic input gate reports missing links or isolated_component before retrieval or model calls, even if all IP fields are supplied.
+Required: The deterministic input gate reports missing links or isolated_device before retrieval or model calls, even if all IP fields are supplied.
 Forbidden: Do not fabricate a peer, switch or router to make input ready. Do not describe standalone computers as invalid in real networking.
 Expected: No translation plan under the current no-isolated-components project policy. Two directly connected PCs can satisfy that policy.
 Verify: Offline check returns not_ready; a self-link does not count as attachment.
@@ -44,6 +47,7 @@ Related: INPUT-001, EX-PC-DIRECT
 Rule-ID: EX-PREFIX31
 Kind: example
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: /31, /32, point-to-point, direct PCs, host route
 Applies: Two supporting IPv4 stacks share a direct point-to-point cable with 10.0.0.0/31 and 10.0.0.1/31.

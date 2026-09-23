@@ -13,6 +13,7 @@ class KnowledgeRecord(TypedDict):
     heading: str
     text: str
     mode: str
+    phase: str
 
 
 class Retriever(Protocol):

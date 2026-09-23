@@ -2,6 +2,7 @@
 Rule-ID: STATIC-001
 Kind: rule
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: static routing, two routers, next hop, return route
 Applies: PC1--R1--R2--PC2 has distinct endpoint LANs and static routing.
@@ -16,6 +17,7 @@ Related: ROUTE-002, EX-STATIC, EX-NOROUTE
 Rule-ID: STATIC-002
 Kind: rule
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: wrong next hop, interface down, inactive route
 Applies: A supplied static route has an unreachable next hop or failed link.

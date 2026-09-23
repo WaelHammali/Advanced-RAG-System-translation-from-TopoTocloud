@@ -2,6 +2,7 @@
 Rule-ID: SVC-HTTP
 Kind: rule
 Mode: all
+Phase: configuration
 Status: target_specification
 Keywords: services, http, nginx, apache, server, listen, document_root, port 80
 Applies: A component declares an HTTP server service.
@@ -16,6 +17,7 @@ Related: AUTO-001, AUTO-002, CORE-001
 Rule-ID: SVC-HTTPS
 Kind: rule
 Mode: all
+Phase: configuration
 Status: target_specification
 Keywords: services, https, TLS, certificate, private_key, port 443
 Applies: A component requests an HTTPS endpoint.

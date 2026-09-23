@@ -2,6 +2,7 @@
 Rule-ID: L2-001
 Kind: rule
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: same switch, same LAN, meme switch, ping, ARP
 Applies: Ordinary IPv4 hosts share an active Ethernet segment/VLAN and compatible on-link addresses.
@@ -16,6 +17,7 @@ Related: L2-002, EX-LAN
 Rule-ID: L2-002
 Kind: rule
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: VLAN, subnet, access port, trunk, inter-VLAN
 Applies: Hosts share a switch but differ in VLAN or IPv4 subnet.
@@ -30,6 +32,7 @@ Related: ROUTE-001, EX-VLAN
 Rule-ID: L2-003
 Kind: rule
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: switch chain, bridge, trunk, STP, loop
 Applies: Several switches/links form a source LAN.

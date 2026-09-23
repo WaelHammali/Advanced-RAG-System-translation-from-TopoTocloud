@@ -2,12 +2,13 @@
 Rule-ID: AUTO-001
 Kind: rule
 Mode: all
+Phase: configuration
 Status: target_specification
 Keywords: automation, tasks, operation, parameters, package, service, file, user, firewall
-Applies: Architecture JSON supplies automation tasks or requests configurable services and protocols.
-Required: Retain task IDs, target_ids, operation, parameters and dependencies inside cloud_plan.configuration. Bind each operation to the intended source component and proposed runtime.
+Applies: The later external NLP/configuration stage receives user requests after topology planning.
+Required: Resolve an approved operation ID and its required parameters against the later generator catalog. Bind the request to an exact device_id and the plan configuration_targets runtime/interface references. This initial topology RAG does not implement that catalog or execute requests.
 Forbidden: Do not emit executable code, activate disabled settings, replace custom operations or target all hosts by guesswork.
-Expected: Declarative JSON requirements for the AWS architecture; unfamiliar operations remain visible with implementation limitations.
+Expected: An external configuration request targeting the existing lab device; unfamiliar operations require clarification, not invented commands.
 Verify: Compare task targets, dependencies and parameters with the source. Execution is outside the translator.
 Sources: PROJECT
 Related: AUTO-002, INPUT-001, SVC-HTTP
@@ -16,6 +17,7 @@ Related: AUTO-002, INPUT-001, SVC-HTTP
 Rule-ID: AUTO-002
 Kind: rule
 Mode: all
+Phase: configuration
 Status: target_specification
 Keywords: automation, connection, ssh, management, runtime, resource reference
 Applies: Planning configuration of cloud-hosted source components.

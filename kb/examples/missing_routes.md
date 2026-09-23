@@ -2,6 +2,7 @@
 Rule-ID: EX-NOROUTE
 Kind: example
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: no routes, missing return route, ping fails
 Applies: PC1=10.10.10.10/24 gw 10.10.10.1 connects R1 LAN=10.10.10.1/24; R1 WAN=10.255.0.1/30 connects R2 WAN=10.255.0.2/30; R2 LAN=10.20.20.1/24 connects PC2=10.20.20.20/24 gw 10.20.20.1.

@@ -2,6 +2,7 @@
 Rule-ID: EX-LAN
 Kind: example
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: same switch, same LAN, no routing, PC1, PC2
 Applies: PC1 and PC2 attach to SW1 VLAN 10. SW1 also connects R1, which connects R2.

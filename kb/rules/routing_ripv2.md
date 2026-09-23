@@ -2,6 +2,7 @@
 Rule-ID: RIP-001
 Kind: rule
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: RIP, RIPv2, UDP 520, 224.0.0.9
 Applies: Architecture routing configuration requests or supplies RIPv2.
@@ -16,6 +17,7 @@ Related: RIP-002, EX-RIP
 Rule-ID: RIP-002
 Kind: rule
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: passive interface, metric 16, hop limit, update loss
 Applies: Validating RIPv2 or a RIP failure exercise.

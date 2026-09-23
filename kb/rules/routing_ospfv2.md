@@ -2,6 +2,7 @@
 Rule-ID: OSPF-001
 Kind: rule
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: OSPF, protocol 89, area, router ID
 Applies: Architecture routing configuration requests or supplies OSPFv2.
@@ -16,6 +17,7 @@ Related: OSPF-002, OSPF-003, EX-OSPF
 Rule-ID: OSPF-002
 Kind: rule
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: Full, 2-Way, DR, BDR, point-to-point, multicast
 Applies: Checking OSPF readiness on realized links.
@@ -30,6 +32,7 @@ Related: BACKEND-002, OSPF-001
 Rule-ID: OSPF-003
 Kind: rule
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: area mismatch, passive transit, missing network
 Applies: OSPF input contains incompatible link settings, failed links or omitted LANs.

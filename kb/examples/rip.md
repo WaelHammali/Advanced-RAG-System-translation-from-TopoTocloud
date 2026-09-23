@@ -2,6 +2,7 @@
 Rule-ID: EX-RIP
 Kind: example
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: RIPv2, dynamic routing, learned routes
 Applies: PC1--R1--R2--PC2 uses isolated Ethernet lab links.

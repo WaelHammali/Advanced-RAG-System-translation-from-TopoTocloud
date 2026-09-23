@@ -2,6 +2,7 @@
 Rule-ID: EX-NAT
 Kind: example
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: private server, internet, NAT, no public PC
 Applies: A private S1 explicitly requires outbound access through its configured lab egress router.

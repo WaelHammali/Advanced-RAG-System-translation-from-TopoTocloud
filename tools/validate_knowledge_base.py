@@ -16,12 +16,13 @@ from urllib.parse import unquote
 ROOT = Path(__file__).resolve().parents[1]
 KB = ROOT / "kb"
 MANIFEST = KB / "manifest.json"
-CORPUS_VERSION = "3.0.0"
+CORPUS_VERSION = "4.0.0"
 CORE = ["CORE-001", "CORE-002", "CORE-003"]
 FIELDS = {
     "Rule-ID",
     "Kind",
     "Mode",
+    "Phase",
     "Status",
     "Keywords",
     "Applies",
@@ -107,6 +108,8 @@ def validate(refresh: bool) -> dict:
                 errors.append(f"{rid}: invalid kind")
             if fields.get("Mode") not in {"behavioral_lab", "cloud_native", "all"}:
                 errors.append(f"{rid}: invalid mode")
+            if fields.get("Phase") not in {"topology", "configuration"}:
+                errors.append(f"{rid}: invalid phase")
             if fields.get("Status") != "target_specification":
                 errors.append(f"{rid}: target status missing")
             if len(chunk.text) > limit:
@@ -121,6 +124,7 @@ def validate(refresh: bool) -> dict:
                     "title": title,
                     "kind": fields.get("Kind"),
                     "mode": fields.get("Mode"),
+                    "phase": fields.get("Phase"),
                     "characters": len(chunk.text),
                     "sha256": digest(chunk.text.encode()),
                     "sources": source_ids,

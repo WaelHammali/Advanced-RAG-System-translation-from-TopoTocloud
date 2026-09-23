@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "corpus_version": "3.0.0",
+  "corpus_version": "4.0.0",
   "status": "target_specification",
   "default_mode": "behavioral_lab",
   "reviewed_on": "2026-09-17",
@@ -20,131 +20,131 @@
   "files": [
     {
       "path": "kb/examples/bastion.md",
-      "sha256": "92b1fddfb3a5f1d12d2224dacf352731ad11e13f8619471a2a4e37bf41ec3699"
+      "sha256": "9ec4cee6d3c6e5822e5b8ddba697a8faa9424e53f4d78cd2bf0c89923ec69cb8"
     },
     {
       "path": "kb/examples/direct_links.md",
-      "sha256": "61cd851977706b11301fdc3cb73fc3cc7b86aadb593579fb35e74b3ee50f454d"
+      "sha256": "56c0b4a547951a2bde3c380215f4c4b6445a92d9a7b149a0285b1bdb73be1f7e"
     },
     {
       "path": "kb/examples/isolated.md",
-      "sha256": "7e503a8927012c76b4e6f393738e17b131525c471eff67d9f092303263427b41"
+      "sha256": "7209f130983b1ee280b06b3b9f49430f4b13e923214dccfb868315268198350d"
     },
     {
       "path": "kb/examples/missing_routes.md",
-      "sha256": "7ca6a7b4ea7e3b6ebff4d40b912d20a1e405da0b952ac4cbe6a6d336aa73672c"
+      "sha256": "3c239395c89800317f95835b8fa1a8ed0cbf3f2aa0d5a81607faf38dabb4d66c"
     },
     {
       "path": "kb/examples/nat.md",
-      "sha256": "322f843d2a20e8640763e293052293a7b90519b84746b79ff8ba74b148c939ea"
+      "sha256": "2f22c7ad11d66a4d25f7facac213bc540134aa889c605bc46ebcfa809c2e5213"
     },
     {
       "path": "kb/examples/ospf.md",
-      "sha256": "c5d4b224e41cfbe6eb7a8f3d4c492a1f48b869ff2ab6fc4918a63a79038c5138"
+      "sha256": "52b3bbbb6f34ff48738383be7d51021dce6f1ccc74beafb561748e1b32802508"
     },
     {
       "path": "kb/examples/ospf_mismatch.md",
-      "sha256": "e140bc193f3749070a27939409cfc40361d3e2e65a74672706aa96766c9f4f82"
+      "sha256": "4f794bacdab1771b87a50ce7a7bfb8b4246a3418e4c2f9dd506100faac97e5a7"
     },
     {
       "path": "kb/examples/peering.md",
-      "sha256": "b6a58c1424f0fa694cd68cf25504bb0d0d960ccfa19234e62c94aa4d5881f432"
+      "sha256": "aa92100825254f908d073e4e02d7f82de1e9098bd24ea4caa4279788ab6cb3d7"
     },
     {
       "path": "kb/examples/rip.md",
-      "sha256": "3f2ff3366e5577eae35d85eacea6dd10d611e0f347a72bc2e0b84adc02927118"
+      "sha256": "7d0f3b6807cbc6d8f34fa579c33af9e7eb4c8bf26e17b286810c69ccbbf9c8f5"
     },
     {
       "path": "kb/examples/same_lan.md",
-      "sha256": "a7a8cd240d7c615a2a109ef90633fc1cefdb4f62d2ffada5420da1ee1f6df41c"
+      "sha256": "53757eab962e5279d7998e54622af2f38a395c9ab603e8e44d2c9819792d0834"
     },
     {
       "path": "kb/examples/single_router.md",
-      "sha256": "e91957847deb754908528f777152cf0a72452bf69a299ba7a6d4c80308c2855f"
+      "sha256": "31bd9c818ae0dc63d629e495c3e8fb6e27ac823e1ec10a2d0aecdc7aaa8ffadc"
     },
     {
       "path": "kb/examples/tgw.md",
-      "sha256": "f3f90786e32a0a900123b2e36eca05d59e2e813a8433ff7e4c589615ce3c6ec9"
+      "sha256": "1d1dffab58e74bfcb9b9bfac73c68b96dfe26707b6c6cdff3b0d00433b7e9052"
     },
     {
       "path": "kb/examples/two_router_static.md",
-      "sha256": "29add4aa058d408dd1e1d93b31557739c7a8a408c694185bd081f886c98969d7"
+      "sha256": "dc29fe958f2b1928e7cbe75af9fe9c9f37b12e0192af3048225f31e7c2eb1710"
     },
     {
       "path": "kb/examples/vlans.md",
-      "sha256": "8283a796b983e2208ab501c2aa5c3508afb67957ab6198346be31fff29b69a2e"
+      "sha256": "ac665e191187d1e24c7f7ccdbea3d60f673be961ed9b53403171ae58b6e893c4"
     },
     {
       "path": "kb/rules/access_patterns.md",
-      "sha256": "4cb7c4c54b54d01a58acb2fc0835420a99edde2884a09b2185260dc6dfc476f5"
+      "sha256": "0e1386c07caa02ff2f7af67aeaa5f86d39e6eb95b6756d8267139dfd05ea85d1"
     },
     {
       "path": "kb/rules/addressing_rules.md",
-      "sha256": "39a32b6b1110239b1eef10fa767dcd741cccd4ec21c81c5b2bc09b5f685e283d"
+      "sha256": "8f13b27613c046003f0b495122123e03c9fca0fe8a2fa18a2e56b6a57d92074d"
     },
     {
       "path": "kb/rules/application_services.md",
-      "sha256": "42e13b2645c285b8f01a77c5422dbc6ce90154fa41195f70850769cce29c63c3"
+      "sha256": "661b2f4f89eac5c7d49e766606b596e443842b33f9291dc713a4afae3fe369a6"
     },
     {
       "path": "kb/rules/aws_network_patterns.md",
-      "sha256": "0cf367153483f8f6f9fc944a35d46e82383b0a96c83eccfb2c57301d0f08f26f"
+      "sha256": "04f66f00f08397ba3fb8fe408689385a68b7f001c6f63990c0c1cc1b6d0a83e8"
     },
     {
       "path": "kb/rules/configuration_operations.md",
-      "sha256": "f809323286a8eb55a18ad5c4081653351d62b4e7639f96f6f8c761d7c4134837"
+      "sha256": "d87b78e57235094926f1c861179849394dbee499f5ee67c76734158028ddd712"
     },
     {
       "path": "kb/rules/input_contract.md",
-      "sha256": "3288e0b7bd9ff770b114e8a20670fe538b4173e27145047d8f9d448f88b1fdf2"
+      "sha256": "97cb2cd937d532557d7962d9657b58dedc05429d4b3bba87b13832d745bbfa55"
     },
     {
       "path": "kb/rules/internet_patterns.md",
-      "sha256": "518b45a307c1f3c87b9c4000c400c162a8f8df6b44c5af4b9b57c2c74342df22"
+      "sha256": "aecdc4437258bb74138a153cf3118820e82f479cabc362f98bca4b92197db61c"
     },
     {
       "path": "kb/rules/layer2_patterns.md",
-      "sha256": "0717517fe1b223e9f5f28c00652cba818449fd58fb45d3319c5bd37884581bb7"
+      "sha256": "b1b66c61c1bcc8b2022f5aabd78e207b0fd2feb1714382c0ed44ca7f5764e3ad"
     },
     {
       "path": "kb/rules/mapping_rules.md",
-      "sha256": "16ccb09f3ddbd750924c2c2dde8077447f9d87faf3654f94ab422a7449724283"
+      "sha256": "77ff92f6e6537e02aea11722b965d774488c5ef15f1a8b1f494e79c37ca0e65c"
     },
     {
       "path": "kb/rules/plan_boundaries.md",
-      "sha256": "c3147d9b266b496ecc8e6c107301d58e2f658a130058fbb7f2c056db138853f4"
+      "sha256": "1dea588c23e7f97d2b432429c0891a41b810cfc202d6228f5ef5217d932705f2"
     },
     {
       "path": "kb/rules/real_router_appliance_rules.md",
-      "sha256": "13a6c79ad46704aa2cf7a0a8d4df4f1ece0ff57683b2ccb7efb095d4116fd176"
+      "sha256": "54da5e69e681a714503ba0b06d4e1d1e939cae49413426ef93736111306a5355"
     },
     {
       "path": "kb/rules/routing_ospfv2.md",
-      "sha256": "72952ab8c43efaa4faa906ea7e9514866d08afcce465e4efa2c040913521aa4c"
+      "sha256": "0ad7151b4dde83cd2cb6b2f8017e9069c008a1fadbbc1e0f67d1531cd65e031f"
     },
     {
       "path": "kb/rules/routing_ripv2.md",
-      "sha256": "79bcf3d7836b4f23bd1b1a5e0692bee5558562d0966d3e180de265228546b1be"
+      "sha256": "98f52d74db3b0548af668614b7d998d9f448c456b92489fc113ce13160471863"
     },
     {
       "path": "kb/rules/routing_rules.md",
-      "sha256": "b7f1826e907e9d9e24bcb00a7a4c981ae243b769456f83069299d3ea2f70b51e"
+      "sha256": "03fb6a4a0e0505eadad4024ed2c66234fab94386250d5ca7e420d70516fd31b5"
     },
     {
       "path": "kb/rules/routing_static.md",
-      "sha256": "8286264e143662699795fa2edaa4101251b7ff3ef4a8a2dcc8d099e277809160"
+      "sha256": "2afe7e40c7afa541c79c39792a30b404af8733930098f81f2017321d8987c2c9"
     },
     {
       "path": "kb/rules/security_patterns.md",
-      "sha256": "931bc5b0bcf7ad0523bcab88aadfcef3f49b7aa3f29d044cfaed5fc4306a8581"
+      "sha256": "9440d11e39f4f1ecedd510cf4ea68f79ec34964eba8fc117040f61398e54aa47"
     },
     {
       "path": "kb/rules/translation_contract.md",
-      "sha256": "9011061fd6492bcdbdb6831f8228a36a8c23b1d92369b01fda1f438cbb7b57a4"
+      "sha256": "d9597185207f6a84007323dab72ce0fb641ef7ff4128eebba3f45749c661e57e"
     },
     {
       "path": "kb/rules/verification_rules.md",
-      "sha256": "c53aa939acda06f43da04a54ea75a1090fa9874367032838f00f6660db8bee7c"
+      "sha256": "afe063fca8df2e3d0d07628be715a8c1f43ece42fa1ab53e4f987fc8587c33b9"
     }
   ],
   "records": [
@@ -154,8 +154,9 @@
       "title": "Bastion-only SSH has a required negative test",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 774,
-      "sha256": "857ebab9568e37d229b3c986ae2fc282643fc69dc514228f9666a59b8653c72b",
+      "phase": "configuration",
+      "characters": 795,
+      "sha256": "dde4d31f9301d4089580f169b564dfb485894c87d059911155f6cf7900bf22ca",
       "sources": [
         "PROJECT"
       ],
@@ -170,8 +171,9 @@
       "title": "Two router-to-host cables are separate segments",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 721,
-      "sha256": "7456aef5a5b41f5d4e8af35bb81373c65d1750a1778f71de20082d8b27bb6ad4",
+      "phase": "configuration",
+      "characters": 742,
+      "sha256": "ebcf51a2cf04e091caf2b5b43e752d3e312a3d773d01318c5fec6ca29508990d",
       "sources": [
         "PROJECT"
       ],
@@ -186,8 +188,9 @@
       "title": "Two directly cabled PCs need no router for local traffic",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 892,
-      "sha256": "2057f6d30c859140501925d8f727d6081d54d653965e5c3cf8e5c93994f4509b",
+      "phase": "topology",
+      "characters": 908,
+      "sha256": "640dc895ba22fa00ba11f1879f3cecdd12d1e8c8398c33dd71e008b506700bda",
       "sources": [
         "RFC-HOST",
         "PROJECT"
@@ -203,8 +206,9 @@
       "title": "A standalone component is outside the current readiness policy",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 920,
-      "sha256": "3fbafef8f848cdd117bdc7f73f9d924feea6afe955d3dc6bcd560a69b67d5381",
+      "phase": "topology",
+      "characters": 933,
+      "sha256": "b77da1cfe83ce6dffca1374cb4a20baf43b83394990fbc18ce6662ab42c754eb",
       "sources": [
         "PROJECT"
       ],
@@ -219,8 +223,9 @@
       "title": "Point-to-point prefix boundaries must not trigger invented routing",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 952,
-      "sha256": "1e0580e0310cff4065ee61a155cc023f473d63990f467349597e6cd439e348fa",
+      "phase": "topology",
+      "characters": 968,
+      "sha256": "5c3b4b9df6ec28752a373f40ff7d99ea8adb05a01ff19836d3759fc6551882b2",
       "sources": [
         "RFC-P2P31",
         "PROJECT"
@@ -236,8 +241,9 @@
       "title": "Disconnected router components must remain isolated",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 827,
-      "sha256": "17282c76d6f4e58621653ed2de9b98f490b6d73dad51c2b79b519e6cf0fca82d",
+      "phase": "topology",
+      "characters": 843,
+      "sha256": "ad9802269bb6abbbf5b9fdd8fbbc3f4fe4a31f5e4b513add01e8b9af84fcb267",
       "sources": [
         "PROJECT"
       ],
@@ -252,8 +258,9 @@
       "title": "Missing remote or return routes correctly prevent ping",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 983,
-      "sha256": "3e63466ac2dda497a3a6093c52de2ae1905617eca460acf767f994996c73769c",
+      "phase": "configuration",
+      "characters": 1004,
+      "sha256": "a369170efc41d1dd21f335d0fd32eae1e64691c65f373183a16bebac1b5871ee",
       "sources": [
         "PROJECT"
       ],
@@ -268,8 +275,9 @@
       "title": "Private workload egress preserves lab routing",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 929,
-      "sha256": "21b32f018cac23f6f06eb51549331588e2696c3faf9834e9000ec89c0fe5bebd",
+      "phase": "configuration",
+      "characters": 950,
+      "sha256": "21e784667f2ef5f935492e09f969d4ae32f528962864fc7312886225aaf43c7d",
       "sources": [
         "PROJECT"
       ],
@@ -284,8 +292,9 @@
       "title": "Two-router point-to-point OSPFv2",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 861,
-      "sha256": "94e0380666c422563336da2a772ac86cea6fb3307de9cefaced19d8abdfc25b4",
+      "phase": "configuration",
+      "characters": 882,
+      "sha256": "9a02671526f654576181433a8e2c1f905b8aac302841d3900cbf1a4236380aa0",
       "sources": [
         "PROJECT"
       ],
@@ -300,8 +309,9 @@
       "title": "OSPF area mismatch keeps the remote LAN unreachable",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 909,
-      "sha256": "bf3713f7f6e99d5a3855ac0be5bb07d91acf75464f916c1417cdc69a3e4c0b31",
+      "phase": "configuration",
+      "characters": 930,
+      "sha256": "48252d3e550241d2b8f627c7ce69ee2e83fa3550030dd4e322e15b5bebc53e00",
       "sources": [
         "PROJECT"
       ],
@@ -316,8 +326,9 @@
       "title": "Peering is only an optional transport between two workers",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 838,
-      "sha256": "f017465199a7a4a514f53e996aa38fadca27b87c31828d2e753c4085d61fa096",
+      "phase": "configuration",
+      "characters": 859,
+      "sha256": "b701d0b8d09f8f7e7436853d6a9956fe3ae5415c46c9cc93190aac8f654f963c",
       "sources": [
         "PROJECT"
       ],
@@ -332,8 +343,9 @@
       "title": "Two-router RIPv2 learns both remote LANs",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 897,
-      "sha256": "4e774ee9aac7bc0e04b79733b4e6d727396f7bb9caf1ce894e78eee0d99c15d3",
+      "phase": "configuration",
+      "characters": 918,
+      "sha256": "5889755ae3cc67f938d385a96757507d06df03afa71d9645a5c7d43d23ed29fd",
       "sources": [
         "PROJECT"
       ],
@@ -348,8 +360,9 @@
       "title": "Local ping survives unrelated router failure",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 760,
-      "sha256": "a5bfef76d1e1bb831b4db38623caad6d7a6e4651e5d201390608a085c74684be",
+      "phase": "topology",
+      "characters": 776,
+      "sha256": "0af3596c0f0ec499b4756cb95591da7f45055b044af87e8029c2a72ab27b4743",
       "sources": [
         "PROJECT"
       ],
@@ -364,8 +377,9 @@
       "title": "One router forwards between its connected LANs",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 775,
-      "sha256": "fe2422e4e3e073fc15aee4eae78468e06f1c24bf8e0ddaf1a1e773daedd40dad",
+      "phase": "configuration",
+      "characters": 796,
+      "sha256": "86224a836732b9c9e51f867811d573a7e8a3356b98a51f8ff24fe44de0e0ce94",
       "sources": [
         "PROJECT"
       ],
@@ -380,8 +394,9 @@
       "title": "A three-router chain still depends on its middle router",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 862,
-      "sha256": "0810916ad6019d6a64c473913e97b09ffd58b93d9a60ef4e5c00ecf2433a81b0",
+      "phase": "configuration",
+      "characters": 883,
+      "sha256": "37890c17a30af60b9fa6fc19d2213ad81c39acc77533611aa5d63632289a1e26",
       "sources": [
         "PROJECT"
       ],
@@ -396,8 +411,9 @@
       "title": "Two routers with complete static routing",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 784,
-      "sha256": "bf32213976a58ecaf975b95b1f18e0bf2e0311cc20c2674397f4f49b20e50d30",
+      "phase": "configuration",
+      "characters": 805,
+      "sha256": "7b5e9bd03f9e7f579d4570c770f883d1ffb81a43ab8bf9ca79fd9f3e3630b3de",
       "sources": [
         "PROJECT"
       ],
@@ -412,8 +428,9 @@
       "title": "Same switch and prefix do not connect different VLANs",
       "kind": "example",
       "mode": "behavioral_lab",
-      "characters": 705,
-      "sha256": "4dead169cbb9a6044e090417bb36ed145cc21827ac13855197ccb1a944b2d66f",
+      "phase": "configuration",
+      "characters": 726,
+      "sha256": "c05073a2aca724f1dfb08b27915971f32c522c598d9832ad0fb1f34d7fcac2c0",
       "sources": [
         "PROJECT"
       ],
@@ -428,8 +445,9 @@
       "title": "Bastion access must not create lab shortcuts",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 800,
-      "sha256": "6ff61b396bb6ccea787b7d00ce63f93673b8b60bbe7045e06bdd30d604185221",
+      "phase": "configuration",
+      "characters": 821,
+      "sha256": "48ebb42212e31085dbafa5eaf19c21fc44036cff769ae6188fee09b871574e67",
       "sources": [
         "PROJECT",
         "AWS-SG"
@@ -445,8 +463,9 @@
       "title": "Management exposure must not rewrite lab LANs",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 712,
-      "sha256": "88028d0b3a7a86a4c82b67e7a3cff4ac834f5222f35b8d9b96794dd4c4669b75",
+      "phase": "configuration",
+      "characters": 733,
+      "sha256": "39543ff7bb803d91b5d9985ec00a316658c49bb236b684e1552dc9596b848ef7",
       "sources": [
         "PROJECT"
       ],
@@ -461,8 +480,9 @@
       "title": "Preserve addresses and allocate only authorized missing values",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 838,
-      "sha256": "65426e549aa7ea1315fff459ae2a7a1b7114be18c1ee78fb3e9f5c11261cb423",
+      "phase": "topology",
+      "characters": 947,
+      "sha256": "1a9df209440cd6d4d263ab65db0832e4b5b2ee83e27942455d61bbd61a5ebf65",
       "sources": [
         "PROJECT",
         "RFC-HOST"
@@ -478,8 +498,9 @@
       "title": "Separate lab prefixes from AWS transport prefixes",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 796,
-      "sha256": "ecccf1e50c16ed47ed4bf1994c3d34a1a64f887a502dd0b6fddb005c0a4d6fb3",
+      "phase": "topology",
+      "characters": 812,
+      "sha256": "009e5eaa796e5a3a43943f55f759a129b11b6513d26ff029955dfd6a91c40ffc",
       "sources": [
         "PROJECT",
         "AWS-SUBNET"
@@ -495,8 +516,9 @@
       "title": "Plan HTTP services on their specified components",
       "kind": "rule",
       "mode": "all",
-      "characters": 982,
-      "sha256": "37563008fe1391c5b1fab0c9a2eeb7f3e677532d5545c55d4a2f9a186ab5cdfc",
+      "phase": "configuration",
+      "characters": 1003,
+      "sha256": "c4ada334afb20f00ef139b290b42d183370e544a4c0956b10f5410a4e40dd9a9",
       "sources": [
         "NGINX-HTTP",
         "PROJECT"
@@ -513,8 +535,9 @@
       "title": "Preserve TLS configuration and secret references",
       "kind": "rule",
       "mode": "all",
-      "characters": 846,
-      "sha256": "d006aeec43c47c5bd3d330e67fe6f52d4f7b6714b290b678af2002a9db9b2317",
+      "phase": "configuration",
+      "characters": 867,
+      "sha256": "103533ad0c8561999dc7bc57221dc3d2a0b21a420a0afebc737e5a4fbc670ed7",
       "sources": [
         "PROJECT"
       ],
@@ -529,8 +552,9 @@
       "title": "AWS local routes do not establish router traversal",
       "kind": "rule",
       "mode": "all",
-      "characters": 716,
-      "sha256": "f18dbf2520e5fdd087866caeeec01ddc20728339f2563294c4bb8e5257f3befb",
+      "phase": "configuration",
+      "characters": 737,
+      "sha256": "315f6dc3f824f268952e4aa41ed01c26694147c1a065ed9300e9ade1285fad4c",
       "sources": [
         "AWS-ROUTES",
         "PROJECT"
@@ -546,8 +570,9 @@
       "title": "Peering carries transport without creating lab adjacency",
       "kind": "rule",
       "mode": "all",
-      "characters": 750,
-      "sha256": "70fa919c5dcf7efa9fe92285066c711ddae51a6bf8e19b1499df66bec7bcf8e2",
+      "phase": "configuration",
+      "characters": 771,
+      "sha256": "ad79983ac0d90565054209de42f8a037c382f79811082557f1df2acec7b413ad",
       "sources": [
         "AWS-PEERING",
         "PROJECT"
@@ -563,8 +588,9 @@
       "title": "Transit Gateway must preserve lab isolation and paths",
       "kind": "rule",
       "mode": "all",
-      "characters": 761,
-      "sha256": "722ca1df81a2ad7d098b9c5ce4021d34d6f25a29d38ac62e6b15b238ba09d1a4",
+      "phase": "configuration",
+      "characters": 782,
+      "sha256": "8d100e481ddc0b8e8bf8f104d9599d935250d75e2b5329940c44013bd3eec654",
       "sources": [
         "AWS-TGW",
         "PROJECT"
@@ -580,8 +606,9 @@
       "title": "Distinguish AWS ENI limits from virtual lab ports",
       "kind": "rule",
       "mode": "all",
-      "characters": 803,
-      "sha256": "ffd1f38b033e070247d5c4bc776045a6c606ccc0e661c555632b895b22da292e",
+      "phase": "configuration",
+      "characters": 824,
+      "sha256": "9239fcacc06efe83a88b98a53c661403e9a385aabf82df0334074b08a456326f",
       "sources": [
         "AWS-ENI",
         "PROJECT"
@@ -597,8 +624,9 @@
       "title": "Preserve declarative configuration operations and target bindings",
       "kind": "rule",
       "mode": "all",
-      "characters": 958,
-      "sha256": "affdf73112c273ee2d88edf12ee7fc5fbbb119e784c5ef0b6a16c5911fadb09e",
+      "phase": "configuration",
+      "characters": 1093,
+      "sha256": "363d9c939607910d059b697aa221842224a1afaa20d1d59368700d05b11f34e4",
       "sources": [
         "PROJECT"
       ],
@@ -614,8 +642,9 @@
       "title": "Keep management access symbolic and separate from lab traffic",
       "kind": "rule",
       "mode": "all",
-      "characters": 908,
-      "sha256": "38e793ca7c3205907f4e5e933f7e49efbb5a0a48f67370c5f32b4c5bf99f7ac6",
+      "phase": "configuration",
+      "characters": 929,
+      "sha256": "fc48972f3f0aba2cee43fbdfe5834fbecbebdd6c717857361bc6789c0c84332c",
       "sources": [
         "PROJECT"
       ],
@@ -631,8 +660,9 @@
       "title": "Consume architecture JSON without losing configuration",
       "kind": "rule",
       "mode": "all",
-      "characters": 1332,
-      "sha256": "6805eb51ce25bec596745fa559a4d36eb5978129da5930e400c6453707b49677",
+      "phase": "topology",
+      "characters": 1432,
+      "sha256": "f61e667441b7686707a861a1831853ad0e2a430e15ddf9526fe78ad53f2116d8",
       "sources": [
         "PROJECT"
       ],
@@ -647,8 +677,9 @@
       "title": "Internet requires an explicit lab egress design",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 760,
-      "sha256": "ffb51a6712e57e3e6c1c0cde871d4a639718d2cd54c416a2d6202af4fb56a6ce",
+      "phase": "configuration",
+      "characters": 781,
+      "sha256": "4757bca4e0290229d95e92fbfe9c4caa2ba978eb8a0e9d9d186269a0472f52e3",
       "sources": [
         "PROJECT"
       ],
@@ -663,8 +694,9 @@
       "title": "Complete the chosen private-workload NAT infrastructure",
       "kind": "rule",
       "mode": "all",
-      "characters": 832,
-      "sha256": "a9f41a924732a0fbd180474dd00a36fc67db1b0a49ea02e13906b3b23f66d642",
+      "phase": "configuration",
+      "characters": 853,
+      "sha256": "685841df12e8338cb3cf0c90caf27941726515165490e24cc9b6fddbb64e3bb4",
       "sources": [
         "AWS-ROUTES",
         "PROJECT"
@@ -679,8 +711,9 @@
       "title": "Same VLAN and subnet permit local ping without a router",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 795,
-      "sha256": "20dfdd665f3dd0e59156ef1df7144fea5e8946f0c24a5b7a981f0b89e8202c98",
+      "phase": "topology",
+      "characters": 811,
+      "sha256": "12110a3131cdc4e504228b0bfafd4fd7c8278d71f10a9c726d463b059eb8b702",
       "sources": [
         "RFC-HOST",
         "PROJECT"
@@ -696,8 +729,9 @@
       "title": "VLAN and IP boundaries must both be modeled",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 787,
-      "sha256": "cc2c519e98266bd79cde22e12e97e09116fbcd797f53ddd57a0473403f78352f",
+      "phase": "configuration",
+      "characters": 808,
+      "sha256": "d69de77115907e9b9da8fa30ec7a8fca5117095d2317cf25a9055a8a8935ec4c",
       "sources": [
         "LINUX-BRIDGE",
         "RFC-HOST"
@@ -713,8 +747,9 @@
       "title": "Preserve switch ports and switching paths",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 867,
-      "sha256": "a1374d874ed313981bb51bc32d204e03db8204edf6250a38db55d12581b6f455",
+      "phase": "topology",
+      "characters": 883,
+      "sha256": "40ef006110cde2207c542cf1c6825359402a810bf470fbcce0a180108291e628",
       "sources": [
         "PROJECT",
         "LINUX-BRIDGE"
@@ -730,8 +765,9 @@
       "title": "Map source devices to behavioral roles",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 872,
-      "sha256": "a1e33a43c7e5e0c77986b91580d94cded162afcabc88bf672ce8eb5686034b60",
+      "phase": "topology",
+      "characters": 971,
+      "sha256": "3d9cb9884eb98a147fcfdb287627dad670b473ef8c1af70bf3fb3db90bc399db",
       "sources": [
         "PROJECT",
         "LINUX-NETNS",
@@ -748,8 +784,9 @@
       "title": "Preserve exact links and disconnected components",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 878,
-      "sha256": "44d2ebca5656279ca3e4f9c52cd0519466efd07a2a0d363ab813753a9d282b8c",
+      "phase": "topology",
+      "characters": 918,
+      "sha256": "7e2edd774c8e9b69d122501b8c245f1b9cf4d73140afbec3121efee7ec16b3fb",
       "sources": [
         "PROJECT"
       ],
@@ -765,8 +802,9 @@
       "title": "Declare behavioral lab or cloud-native migration mode",
       "kind": "rule",
       "mode": "all",
-      "characters": 794,
-      "sha256": "8ec1e2515df47ade08c21bbd0573ade1c8c4643674589a118a4c0b3eefb501b1",
+      "phase": "configuration",
+      "characters": 815,
+      "sha256": "705d5e45fff2a65aee60e6f5c5c1d8874f0057442b0a0a18e02f7882e9a34b35",
       "sources": [
         "PROJECT",
         "AWS-ROUTES"
@@ -782,8 +820,9 @@
       "title": "Keep AWS hosting and source network configuration in one plan",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 1005,
-      "sha256": "f3d523e6d7b37ada3c0e1d3fe75dd7a03fa18beb6b4dffb27833f8cdc277560b",
+      "phase": "topology",
+      "characters": 1174,
+      "sha256": "6e6a8d8271eadd43cd76c40b5ba8eef17b35d9c1d97f4cd1461167ddff28f52c",
       "sources": [
         "PROJECT"
       ],
@@ -798,8 +837,9 @@
       "title": "A plan is not deployment or behavioral verification",
       "kind": "rule",
       "mode": "all",
-      "characters": 848,
-      "sha256": "ede7adf0f8e430d6bbfdb77a1c50d411e224c52fb6c015837ef22f30c7752029",
+      "phase": "topology",
+      "characters": 864,
+      "sha256": "6af7eb2f83dba901844a9a4b71504392e8cb83f0647b6b35feb0a2fd7b50d669",
       "sources": [
         "PROJECT"
       ],
@@ -814,8 +854,9 @@
       "title": "Isolate every lab device's forwarding stack",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 777,
-      "sha256": "98c87469ff568e01c2c4a9ccb7316614a0445562c3d77cd0f6ff2f9fecdea92b",
+      "phase": "topology",
+      "characters": 862,
+      "sha256": "ef8059b7a6f6fec3c9a1912fefb3dcb8a508acd81cf566987dabcca381d61198",
       "sources": [
         "PROJECT",
         "LINUX-NETNS"
@@ -831,8 +872,9 @@
       "title": "Realize each cable and switch port explicitly",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 857,
-      "sha256": "7df13815ff54953a220069528efad585fefded2ba5d9510650937b699d376390",
+      "phase": "topology",
+      "characters": 925,
+      "sha256": "6bf00dcb08a6ee32e853dae1f3794f7ce74400ed8022aee6bce363b7bf7bdf76",
       "sources": [
         "PROJECT",
         "LINUX-VXLAN",
@@ -850,8 +892,9 @@
       "title": "Prevent transport and management forwarding bypass",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 812,
-      "sha256": "c3758dc806b52c9a3ffa5d6ac2327c3ade90edff12bbc948bcb81f412246b539",
+      "phase": "topology",
+      "characters": 828,
+      "sha256": "d8221cdbecf54eb0f01e47584d44a2e9c9999465d53d7994fe8d7895049d0441",
       "sources": [
         "PROJECT",
         "LINUX-NETNS"
@@ -868,8 +911,9 @@
       "title": "Verify router software and configuration readiness",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 767,
-      "sha256": "6c454f61560a6ec3ed0ff26ebec260b9e4eac9016dedfcbead56fb6e4704ff77",
+      "phase": "configuration",
+      "characters": 788,
+      "sha256": "c8022c5035b1e15cc433137285d4712522f25240126511f3fead396f3fd10c48",
       "sources": [
         "PROJECT",
         "LINUX-SYSCTL"
@@ -886,8 +930,9 @@
       "title": "Derive OSPFv2 configuration from interfaces and topology",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 901,
-      "sha256": "e15d59090537cdcefb7eab06415cf4873b386599967e2f1e2f945d4acfec27c4",
+      "phase": "configuration",
+      "characters": 922,
+      "sha256": "2f570f06ea927b64aa8f5ae92b80b7e8a28b827c3099a329757edc51f75ee8ed",
       "sources": [
         "FRR-OSPF",
         "PROJECT"
@@ -904,8 +949,9 @@
       "title": "Validate OSPF neighbors according to network type",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 796,
-      "sha256": "4fa700a19112ce097041bfc2fa206ffc7276d9fa1571bcfdd59837b0b4a934f4",
+      "phase": "configuration",
+      "characters": 817,
+      "sha256": "0b4952eb5d49816a0100ef9c7404421be3836d2f0104b21e54915904b143b66d",
       "sources": [
         "FRR-OSPF",
         "AWS-MULTICAST"
@@ -921,8 +967,9 @@
       "title": "Preserve OSPF mismatches and missing advertisements",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 936,
-      "sha256": "86d5b8bc73b0ffecce09bdcad00d9f69cb3db8ba51f8807ae5a2bd9c1cb24427",
+      "phase": "configuration",
+      "characters": 957,
+      "sha256": "5bd6c6790b80663fc61e36381086deb7f3fabd23d7134c8dc7c668422ea6b25a",
       "sources": [
         "PROJECT",
         "FRR-OSPF"
@@ -938,8 +985,9 @@
       "title": "Configure RIPv2 on actual lab links",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 786,
-      "sha256": "105c9a632506f355a8039495baa7fdd85c8b98df2fb0cf89e2c85ae2332e3933",
+      "phase": "configuration",
+      "characters": 807,
+      "sha256": "be8eb7e984ebf6bf4f11f9b6c33c45008acaebbaf68be0f8d9d1b522b840d067",
       "sources": [
         "RFC-RIP",
         "FRR-RIP",
@@ -956,8 +1004,9 @@
       "title": "Check RIP updates and convergence",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 785,
-      "sha256": "8a04b0ef3b5bc04bcd8c3d418c312f6c3a996ed7e1951762feaafbae52c3c125",
+      "phase": "configuration",
+      "characters": 806,
+      "sha256": "2dc28c9ce6ee719a36dd05eca1955693ed6857287b5a413de6025259eb20b947",
       "sources": [
         "RFC-RIP",
         "FRR-RIP"
@@ -973,8 +1022,9 @@
       "title": "Connected networks need forwarding without a dynamic protocol",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 839,
-      "sha256": "f0ed09f6b619ccd0c7303b4894216d0a87bc578f17c3b16b55dbeed68de0b512",
+      "phase": "topology",
+      "characters": 855,
+      "sha256": "2bd1bd24c12ceb909ec76f45b22aafa9d6270bac895d1e5a86652bcaa9e0ac23",
       "sources": [
         "RFC-ROUTER",
         "LINUX-SYSCTL"
@@ -990,8 +1040,9 @@
       "title": "Evaluate selected routes in both directions",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 839,
-      "sha256": "c9d7018bbc0ada8c1a939686a5a0ebcbf1dfff0a1e4a9def4561d6c1bed72e6b",
+      "phase": "configuration",
+      "characters": 860,
+      "sha256": "87c94af809449de4e4107b65af572b4b9ebd96fe21124c6589633625506aba2f",
       "sources": [
         "RFC-ROUTER",
         "FRR-STATIC"
@@ -1007,8 +1058,9 @@
       "title": "Static remote routing requires a usable return path",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 796,
-      "sha256": "95db1717e485675a0c5ce069bea393b3824c5531e3be337382edee3dd912adbd",
+      "phase": "configuration",
+      "characters": 817,
+      "sha256": "0691bfe356c31f5aba31af158d5889e55b2f188e25a8720df373a6f77bd09b98",
       "sources": [
         "PROJECT",
         "FRR-STATIC"
@@ -1025,8 +1077,9 @@
       "title": "Keep unavailable or invalid static next hops visible",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 751,
-      "sha256": "3243a06dc7f4d2d358a88ca7749fedbedd4be405a8d41c3437ae69b4ce46b704",
+      "phase": "configuration",
+      "characters": 772,
+      "sha256": "5efc43fb80f732379a20f2613f33f22c26db21cef1b4262963b95548f2983762",
       "sources": [
         "PROJECT",
         "FRR-STATIC"
@@ -1042,8 +1095,9 @@
       "title": "Preserve firewall placement and policy semantics",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 771,
-      "sha256": "3bad6ab7078518e1af40f3337c356c2fc7e5b3631978e50828b0e31895aaac57",
+      "phase": "configuration",
+      "characters": 792,
+      "sha256": "bda5ba0274ce802baec8cc85f0df7e3a4b150af21a59b056f430a4bbfb5175ba",
       "sources": [
         "PROJECT"
       ],
@@ -1059,8 +1113,9 @@
       "title": "Separate outer transport security from inner lab security",
       "kind": "rule",
       "mode": "all",
-      "characters": 791,
-      "sha256": "066ac244dbf622c4def4f666d97ca59455755ef3a08415029b40f7a387e1cb67",
+      "phase": "configuration",
+      "characters": 812,
+      "sha256": "58ff7275dc8ce9d7d829e7d2605203d934b8f7c680107ed3ebe43138c8df7727",
       "sources": [
         "AWS-SG",
         "AWS-NACL",
@@ -1077,8 +1132,9 @@
       "title": "Ping and routing-protocol permissions are separate",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 725,
-      "sha256": "74f0b4e81662000e3809d289df7295634c941a8b266014a5cc5ef08189df6330",
+      "phase": "configuration",
+      "characters": 746,
+      "sha256": "5efad89c585b6588773f9f857b9d430ae48e16c27dc07c283bda5386f714e00c",
       "sources": [
         "PROJECT",
         "FRR-OSPF",
@@ -1095,8 +1151,9 @@
       "title": "Preserve network behavior and intentional failures",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 848,
-      "sha256": "b38f883a2547e1a663ce39364e490b4787c3026175687b1f5b248052a1bb16bf",
+      "phase": "topology",
+      "characters": 928,
+      "sha256": "a2ef7ca77efcdd29c3c27be8cf7a9c918a4d31f4ec215f817655700d591ad802",
       "sources": [
         "PROJECT"
       ],
@@ -1112,8 +1169,9 @@
       "title": "Unspecified configuration differs from explicitly absent configuration",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 907,
-      "sha256": "3744588489a9bddecb16af98bfc0bf9a56f847d6cf30ffebe3945fdca786421e",
+      "phase": "topology",
+      "characters": 986,
+      "sha256": "56243652df0c40eb11d5374dcad20f88f179e50bebafc479d1c7911b32fa0740",
       "sources": [
         "PROJECT"
       ],
@@ -1128,8 +1186,9 @@
       "title": "Return only an AWS architecture JSON plan",
       "kind": "rule",
       "mode": "all",
-      "characters": 1050,
-      "sha256": "856ee269ed89cc0e95922bb5ec044db6fef7eda29a3b68524c84ad77c8338f41",
+      "phase": "topology",
+      "characters": 1082,
+      "sha256": "3f8583f4a8e9539b5942a99614ab859f250cbf051b6fa6df848aa36b78423751",
       "sources": [
         "PROJECT"
       ],
@@ -1144,8 +1203,9 @@
       "title": "Separate prediction, observation and conformance",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 818,
-      "sha256": "131bad67abf9a38c5304022c58d0dcd6188af83c032797f875a9693a699e14d0",
+      "phase": "topology",
+      "characters": 834,
+      "sha256": "8f1fdc620116d48a1eeadd293982b133dc78a9ed1168886960dc2b298812ac45",
       "sources": [
         "PROJECT"
       ],
@@ -1160,8 +1220,9 @@
       "title": "Prove packet paths and fault behavior",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 799,
-      "sha256": "45130889a187228a3787a000fe4f62eb482abdd696da0f6b00fd0ca6935ff3eb",
+      "phase": "topology",
+      "characters": 815,
+      "sha256": "a3dffd05eeea7e546d1667f3134fad3036bbab1d02642ee85848454f6d2be422",
       "sources": [
         "PROJECT"
       ],
@@ -1177,8 +1238,9 @@
       "title": "Check convergence and effective tunnel MTU",
       "kind": "rule",
       "mode": "behavioral_lab",
-      "characters": 774,
-      "sha256": "b1a58fe4b81f3ab4d6d18b06da74b8af25a6e5d9a93d8939c5062d36ce2e2901",
+      "phase": "topology",
+      "characters": 790,
+      "sha256": "0e0d1779f66fdb16cc7eeabe8919913f1fd0bafb3fe7e87eaef1bd9dd104a32c",
       "sources": [
         "PROJECT",
         "LINUX-LINK"

@@ -2,6 +2,7 @@
 Rule-ID: EX-TGW
 Kind: example
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: TGW, three router chain, R2 failure, transit
 Applies: PC1--R1--R2--R3--PC3 has distinct endpoint LANs and no alternate lab links.

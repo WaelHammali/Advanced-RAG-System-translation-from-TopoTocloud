@@ -2,6 +2,7 @@
 Rule-ID: EX-OSPF
 Kind: example
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: OSPF, area 0, Full, point-to-point
 Applies: PC1--R1--R2--PC2 uses isolated lab links.

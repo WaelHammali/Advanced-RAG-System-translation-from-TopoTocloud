@@ -2,11 +2,12 @@
 Rule-ID: ADDR-001
 Kind: rule
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: CIDR, IP, gateway, automatic addressing
 Applies: Planning host, router-interface and link addresses.
-Required: Retain explicit prefixes/masks. Allocate authorized missing values from one inventory; check all interfaces for duplicates, overlap and capacity. Derive authorized gateways from attached lab routers.
-Forbidden: Do not guess /27 from an IP, silently renumber, or create an explicitly absent gateway.
+Required: Retain every device/link network object and endpoint IP. Runtime IDs are deterministic; use the device prefix for its main IP and the link prefix for its other addresses. Explicit clarification corrections may synchronize redundant address/mask fields before revalidation.
+Forbidden: Never allocate missing IPs, widen a /32 host mask, renumber devices or invent a gateway during translation.
 Expected: Valid addressing supports intended local/remote decisions; conflicts are reported or retained as deliberate negative labs.
 Verify: Check membership, uniqueness, gateway reachability and provenance.
 Sources: PROJECT, RFC-HOST
@@ -16,6 +17,7 @@ Related: ADDR-002, CORE-002
 Rule-ID: ADDR-002
 Kind: rule
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: overlay, underlay, /30, /31, reserved addresses
 Applies: Hosting lab addressing on AWS workers.

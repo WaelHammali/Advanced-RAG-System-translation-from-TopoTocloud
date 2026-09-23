@@ -2,10 +2,11 @@
 Rule-ID: BACKEND-001
 Kind: rule
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: router appliance, namespace, container, EC2, FRR
 Applies: Implementing behavioral_lab on AWS workers.
-Required: Use one network stack per logical node. Isolate FRR configuration/runtime files/control sockets as well as routes and interfaces. A dedicated EC2 node still needs lab/management separation.
+Required: Use one namespace per PC/server/router and one bridge per source switch/bridge. Runtime IDs and configuration_targets must match the deterministic plan. Isolate filesystem/process configuration for later FRR or service instances as well as routes/interfaces.
 Forbidden: Do not share one routing table between routers or use automatic container host/default networking.
 Expected: Interfaces and routing state belong to the intended node.
 Verify: Inspect namespaces, bridge ports, process configuration and node routes.
@@ -16,10 +17,11 @@ Related: BACKEND-002, BACKEND-003
 Rule-ID: BACKEND-002
 Kind: rule
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: virtual link, veth, VXLAN, unicast, router cable
 Applies: Constructing local or cross-worker lab links.
-Required: Use explicit local veth links or validated Ethernet tunnels. Assign endpoint interfaces; for VXLAN assign unique lab/link identity and unicast endpoints. Configure inner ARP/multicast forwarding and MTU.
+Required: Current educational placement uses local veth pairs with exact endpoint runtime/interface IDs. Preserve per-link IPs and source prefixes. Cross-worker tunnels require a separate validated profile; do not introduce them into the current shared-worker plan.
 Forbidden: Do not rely on outer AWS multicast for inner protocol traffic or merge separate cables.
 Expected: Protocol and endpoint packets follow actual lab links; unrelated transport routes create no lab edges.
 Verify: Capture inner frames at both ends; test ARP, protocol packets and link-down behavior.
@@ -30,6 +32,7 @@ Related: L2-003, MAP-002, VERIFY-003
 Rule-ID: BACKEND-003
 Kind: rule
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: underlay, overlay, shortcut, no bypass, default route
 Applies: AWS or containers host the lab.
@@ -44,6 +47,7 @@ Related: CORE-001, AWS-001, VERIFY-002
 Rule-ID: BACKEND-004
 Kind: rule
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: FRRouting, bootstrap, package, daemon, readiness
 Applies: Provisioning router stacks.

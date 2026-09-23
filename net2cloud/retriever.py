@@ -21,6 +21,7 @@ from .config import (
     RERANK_MODEL,
     RETRIEVAL_BACKEND,
     TOP_K,
+    TOPOLOGY_RULE_IDS,
 )
 from .contracts import JSONObject, KnowledgeRecord
 from .json_io import atomic_path, dumps_json, loads_json, write_json
@@ -111,7 +112,7 @@ def _configuration_queries(architecture: dict[str, Any]) -> list[str]:
 
     if isinstance(devices, list):
         roles = [
-            str(device.get("type", "")) for device in devices if isinstance(device, dict)
+            str(device.get("type", "")).lower() for device in devices if isinstance(device, dict)
         ]
         if roles:
             queries.append("device mapping " + " ".join(dict.fromkeys(roles)))
@@ -119,7 +120,10 @@ def _configuration_queries(architecture: dict[str, Any]) -> list[str]:
             queries.append("switch chain bridge STP loop switching paths")
 
     # A /31 or /32 on either a device's own address or a link's network.
-    for item in [*(devices if isinstance(devices, list) else []), *(links if isinstance(links, list) else [])]:
+    for item in [
+        *(devices if isinstance(devices, list) else []),
+        *(links if isinstance(links, list) else []),
+    ]:
         network = item.get("network") if isinstance(item, dict) else None
         if isinstance(network, dict) and network.get("prefix_length") in (31, 32):
             queries.append("point-to-point /31 /32 host route prefix")
@@ -131,7 +135,7 @@ def _configuration_queries(architecture: dict[str, Any]) -> list[str]:
             for device in devices
             if isinstance(device, dict)
             and isinstance(device.get("id"), str)
-            and device.get("type") in ("pc", "server")
+            and str(device.get("type", "")).lower() in ("pc", "server")
         }
         switches = {
             device["id"]
@@ -189,7 +193,7 @@ def _rank(scores: list[float]) -> list[int]:
 
 def _valid_records(records: Any) -> bool:
     """Check internal cache structure before it becomes planning context."""
-    fields = {"rule_id", "source", "heading", "text", "mode"}
+    fields = {"rule_id", "source", "heading", "text", "mode", "phase"}
     if not isinstance(records, list) or not records:
         return False
     if any(
@@ -201,8 +205,14 @@ def _valid_records(records: Any) -> bool:
     ids = [record["rule_id"] for record in records]
     return (
         len(set(ids)) == len(ids)
-        and set(CORE_RULE_IDS) <= set(ids)
+        and set(TOPOLOGY_RULE_IDS) <= set(ids)
         and all(record["mode"] in {"all", "behavioral_lab", "cloud_native"} for record in records)
+        and all(record["phase"] in {"topology", "configuration"} for record in records)
+        and all(
+            record["phase"] == "topology"
+            for record in records
+            if record["rule_id"] in TOPOLOGY_RULE_IDS
+        )
     )
 
 
@@ -245,7 +255,7 @@ class KnowledgeRetriever:
         if not paths:
             raise RuntimeError(f"No knowledge documents found in {self.kb_dir}")
         identity = {
-            "format": 2,
+            "format": 3,
             "max_characters": MAX_CHARS_PER_CHUNK,
             "source_prefix": self.kb_dir.name,
             "chunker": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
@@ -276,12 +286,13 @@ class KnowledgeRetriever:
                         "heading": chunk.heading,
                         "text": chunk.text,
                         "mode": _field(chunk.text, "Mode"),
+                        "phase": _field(chunk.text, "Phase"),
                     }
                 )
         ids = [record["rule_id"] for record in records]
         if len(set(ids)) != len(ids):
             raise RuntimeError("Duplicate or split rule IDs in the knowledge corpus")
-        if set(CORE_RULE_IDS) - set(ids):
+        if set(TOPOLOGY_RULE_IDS) - set(ids):
             raise RuntimeError("The knowledge corpus is missing mandatory core rules")
         if not _valid_records(records):
             raise RuntimeError("The knowledge corpus contains invalid record fields or modes")
@@ -382,12 +393,26 @@ class KnowledgeRetriever:
     def retrieve(self, architecture: JSONObject) -> list[KnowledgeRecord]:
         records, fingerprint = self._documents()
         by_id = {record["rule_id"]: record for record in records}
-        core = [by_id[rid] for rid in CORE_RULE_IDS]
-        mode = architecture.get("translation_mode", "behavioral_lab")
+        # Source extensions cannot change the fixed behavioral topology phase.
+        pinned = list(TOPOLOGY_RULE_IDS)
+        roles = {
+            str(d.get("type", "")).lower()
+            for d in architecture.get("devices", [])
+            if isinstance(d, dict)
+        }
+        if roles & {"switch", "bridge", "hub"}:
+            pinned.extend(["L2-001", "L2-003"])
+        if "router" in roles:
+            pinned.append("ROUTE-001")
+        pinned.append("ADDR-002")
+        core = [by_id[rid] for rid in pinned]
+        mode = "behavioral_lab"
         candidates = [
             record
             for record in records
-            if record["rule_id"] not in CORE_RULE_IDS and record["mode"] in {mode, "all"}
+            if record["rule_id"] not in pinned
+            and record["mode"] in {mode, "all"}
+            and record["phase"] == "topology"
         ]
         if not candidates:
             return core
@@ -401,7 +426,7 @@ class KnowledgeRetriever:
             if self.backend == "hybrid"
             else _rank(scores)
         )
-        # Give each explicit service/routing/task subject a relevant record.
+        # Give each topology feature a relevant record.
         # This selects knowledge only; it never enables or repairs configuration.
         selected: list[int] = []
         for subject in subjects:
@@ -410,7 +435,7 @@ class KnowledgeRetriever:
             if subject_scores[best] > 0 and best not in selected:
                 selected.append(best)
         for index in ranking:
-            if len(selected) >= self.top_k:
+            if len(selected) + len(pinned) - len(CORE_RULE_IDS) >= self.top_k:
                 break
             if index not in selected:
                 selected.append(index)

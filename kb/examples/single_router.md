@@ -2,6 +2,7 @@
 Rule-ID: EX-SINGLE
 Kind: example
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: single router, connected routes, no OSPF, no static
 Applies: PC1--R1--PC2 uses separate addressed router interfaces.

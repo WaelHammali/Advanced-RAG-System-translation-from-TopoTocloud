@@ -2,6 +2,7 @@
 Rule-ID: EX-ISOLATED
 Kind: example
 Mode: behavioral_lab
+Phase: topology
 Status: target_specification
 Keywords: three routers, disconnected R3, isolation
 Applies: Source graph contains PC1--R1--R2--PC2 and separately R3--PC3, with no link, shared LAN, tunnel or external lab path between components.

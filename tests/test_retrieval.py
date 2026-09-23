@@ -32,13 +32,13 @@ def test_mapping_coverage_survives_renamed_devices_and_ips(tmp_path):
     assert len(ids) == len(set(ids))
 
 
-def test_translation_mode_filters_out_behavioral_only_candidates(tmp_path):
-    records = KnowledgeRetriever(backend="lexical", index_dir=tmp_path).retrieve(
-        {"translation_mode": "cloud_native", "devices": [], "links": []}
-    )
-    assert all(
-        r["mode"] in {"all", "cloud_native"} for r in records if r["rule_id"] not in CORE_RULE_IDS
-    )
+def test_unknown_extensions_cannot_change_the_behavioral_translation_phase(tmp_path):
+    engine = KnowledgeRetriever(backend="lexical", index_dir=tmp_path)
+    records = engine.retrieve({"translation_mode": "cloud_native", "devices": [], "links": []})
+    assert all(r["mode"] in {"all", "behavioral_lab"} and r["phase"] == "topology" for r in records)
+    assert {"BACKEND-001", "BACKEND-002", "BACKEND-003", "MAP-001", "MAP-002", "PLAN-001"} <= {
+        r["rule_id"] for r in records
+    }
 
 
 def test_same_switch_input_retrieves_local_forwarding_knowledge(tmp_path):
@@ -178,7 +178,8 @@ def test_hybrid_windows_cache_and_reranking_without_model_download(tmp_path, mon
         "devices": [{"type": "server", "name": "http tail_marker"}],
     }
     first = engine.retrieve(architecture)
-    assert "SVC-HTTP" in {r["rule_id"] for r in first}
+    assert "BACKEND-001" in {r["rule_id"] for r in first}
+    assert "SVC-HTTP" not in {r["rule_id"] for r in first}
     assert any("tail_marker" in q for q in reranker.queries)
     assert engine.retrieve(architecture) == first
     assert embedder.document_calls == 1
@@ -272,3 +273,24 @@ def test_invalid_corpus_mode_is_rejected_instead_of_silently_dropping_rules(tmp_
     path.write_text(path.read_text().replace("Mode: all", "Mode: typo"))
     with pytest.raises(RuntimeError, match="invalid record"):
         KnowledgeRetriever(backend="lexical", kb_dir=kb, index_dir=tmp_path / "index").retrieve({})
+
+
+@pytest.mark.parametrize(
+    "fixture", ["two_pcs_direct", "separate_pairs", "router_chain_no_routes", "switch_loop"]
+)
+def test_essential_topology_rules_are_present_without_protocol_examples(fixture, tmp_path):
+    source = json.loads((ROOT / "examples/edge_cases" / (fixture + ".json")).read_text())
+    source["description"] = "ospf rip nginx " * 20
+    records = KnowledgeRetriever(backend="lexical", index_dir=tmp_path, top_k=1).retrieve(source)
+    ids = {r["rule_id"] for r in records}
+    assert {
+        "BACKEND-001",
+        "BACKEND-002",
+        "BACKEND-003",
+        "MAP-001",
+        "MAP-002",
+        "PLAN-001",
+        "ADDR-002",
+    } <= ids
+    assert not {"OSPF-001", "RIP-001", "SVC-HTTP", "EX-OSPF", "EX-RIP"} & ids
+    assert all(r["phase"] == "topology" for r in records)

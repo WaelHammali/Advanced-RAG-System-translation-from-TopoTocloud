@@ -2,6 +2,7 @@
 Rule-ID: ACCESS-001
 Kind: rule
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: bastion, SSH, jump host, private host
 Applies: A bastion is explicitly required for management or as a lab device.
@@ -16,6 +17,7 @@ Related: EX-BASTION, BACKEND-003
 Rule-ID: ACCESS-002
 Kind: rule
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: public PC, private server, management, split subnet
 Applies: Management/public exposure differs between nodes on one lab LAN.

@@ -2,6 +2,7 @@
 Rule-ID: EX-BASTION
 Kind: example
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: bastion, SSH only, private host
 Applies: A user requests management access to S1 through bastion B1 only.

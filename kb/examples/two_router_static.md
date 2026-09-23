@@ -2,6 +2,7 @@
 Rule-ID: EX-STATIC
 Kind: example
 Mode: behavioral_lab
+Phase: configuration
 Status: target_specification
 Keywords: static routes, PC1 R1 R2 PC2, reverse route
 Applies: PC1--R1--R2--PC2; each end is a different LAN.

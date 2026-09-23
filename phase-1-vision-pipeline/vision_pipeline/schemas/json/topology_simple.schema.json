@@ -1,29 +1,152 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "topology.simple.json",
-  "description": "Minimal form passed to the RAG. Derived from topology.json by the Topology Builder. null = missing/unresolved.",
+  "description": "Minimal form passed to the RAG (its input contract). Derived from topology.json by the Topology Builder. null = missing/unresolved.",
   "type": "object",
-  "required": ["devices", "links"],
+  "required": [
+    "devices",
+    "links"
+  ],
   "additionalProperties": false,
   "properties": {
-    "devices": {"type": "array", "items": {
-      "type": "object", "required": ["id", "type", "name", "network"], "additionalProperties": false,
-      "properties": {
-        "id": {"type": "string"}, "type": {"type": "string"}, "name": {"type": ["string", "null"]},
-        "network": {"type": "object", "required": ["ip_address", "prefix_length", "subnet_mask", "network_address"],
-                    "additionalProperties": false,
-                    "properties": {"ip_address": {"type": ["string", "null"]},
-                                   "prefix_length": {"type": ["integer", "null"], "minimum": 0, "maximum": 32},
-                                   "subnet_mask": {"type": ["string", "null"]},
-                                   "network_address": {"type": ["string", "null"]}}}}}},
-    "links": {"type": "array", "items": {
-      "type": "object", "required": ["id", "source", "target", "network"], "additionalProperties": false,
-      "properties": {
-        "id": {"type": "string"}, "source": {"type": "string"}, "target": {"type": ["string", "null"]},
-        "network": {"type": "object", "required": ["network_address", "prefix_length", "subnet_mask"],
-                    "additionalProperties": false,
-                    "properties": {"network_address": {"type": ["string", "null"]},
-                                   "prefix_length": {"type": ["integer", "null"], "minimum": 0, "maximum": 32},
-                                   "subnet_mask": {"type": ["string", "null"]}}}}}}
+    "devices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "network"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "network": {
+            "type": "object",
+            "required": [
+              "ip_address",
+              "prefix_length",
+              "subnet_mask",
+              "network_address"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "ip_address": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "prefix_length": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 32
+              },
+              "subnet_mask": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "network_address": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "target",
+          "network"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "target": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "network": {
+            "type": "object",
+            "required": [
+              "network_address",
+              "prefix_length",
+              "subnet_mask",
+              "source_ip",
+              "target_ip"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "network_address": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "prefix_length": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 32
+              },
+              "subnet_mask": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source_ip": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "address the source end uses on this link"
+              },
+              "target_ip": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "address the target end uses on this link"
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

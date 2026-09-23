@@ -423,3 +423,168 @@ def test_cli_validate_exit_code_and_report(tmp_path, capsys):
     assert main(["validate", "--input", str(bad), "--report", str(tmp_path / "r.json")]) == 1
     assert "ip_is_broadcast_address" in capsys.readouterr().out
     assert not json.loads((tmp_path / "r.json").read_text())["valid"]
+
+
+# ------------------------------------------------------------------------ corrections
+from vision_pipeline.validation.corrections import (  # noqa: E402
+    CorrectionError,
+    apply_corrections,
+    parse_address,
+)
+
+
+def dup_lan():
+    return changed(
+        lambda d: (
+            d["devices"][3]["network"].update(ip_address="192.168.1.10"),
+            d["links"][2]["network"].update(target_ip="192.168.1.10"),
+        )
+    )
+
+
+def test_correcting_a_duplicate_ip_makes_the_topology_valid_and_leaves_the_input_alone():
+    doc = dup_lan()
+    before = copy.deepcopy(doc)
+    r = apply_corrections(doc, [{"device": "PC2", "ip": "192.168.1.11"}])
+    assert doc == before and r["rejected"] == [] and r["report"]["valid"]
+    t = r["topology"]
+    assert t["devices"][3]["network"] == {
+        "ip_address": "192.168.1.11",
+        "prefix_length": 24,
+        "subnet_mask": "255.255.255.0",
+        "network_address": "192.168.1.0",
+    }
+    assert t["links"][2]["network"]["target_ip"] == "192.168.1.11"
+
+
+@pytest.mark.parametrize(
+    "corr,code",
+    [
+        ({"device": "PC2", "ip": "192.168.1.10"}, "duplicate_ip"),
+        ({"device": "PC2", "ip": "255.255.0.0"}, "ip_looks_like_mask"),
+        ({"device": "PC2", "ip": "192.168.1.255"}, "ip_is_broadcast_address"),
+        ({"device": "PC2", "ip": "192.168.1.0"}, "ip_is_network_address"),
+        ({"device": "PC2", "ip": "127.0.0.1/8"}, "reserved_ip"),
+        ({"device": "PC2", "ip": "192.168.1.300"}, "invalid_ip"),
+        ({"device": "PC2", "ip": "192.168.1.12/33"}, "invalid_prefix_length"),
+        ({"device": "PC2", "ip": "192.168.1.12/024"}, "invalid_prefix_length"),
+        ({"device": "PC2", "ip": "10.0.0.5/24"}, "ip_outside_link_network"),
+        ({"device": "PC2", "ip": "192.168.1.12", "mask": "255.0.255.0"}, "invalid_subnet_mask"),
+        ({"device": "PC2", "ip": "192.168.1.12/24", "mask": "255.255.255.252"}, "prefix_mismatch"),
+        (
+            {"device": "PC2", "ip": "2001:db8:1::12", "mask": "255.255.255.0"},
+            "unexpected_subnet_mask",
+        ),
+        ({"device": "PC2", "ip": "2001:db8:1::10"}, "duplicate_ip"),
+        ({"device": "PC2", "ip": "fe80::1%eth0"}, "invalid_ip"),
+        ({"device": "R1", "link": "l3", "ip": "10.0.0.1"}, "link_not_on_device"),
+        ({"link": "l4", "network": "10.0.0.1/30"}, "invalid_network_address"),
+        ({"link": "l4", "network": "10.0.0.0"}, "prefix_required"),
+        ({"device": "PC2", "name": "pc1"}, "duplicate_device_name"),
+        ({"device": "PC2", "name": "  "}, "invalid_name"),
+        ({"device": "nope", "ip": "1.2.3.4"}, "unknown_device"),
+        ({"link": "l9", "network": "10.0.0.0/30"}, "unknown_link"),
+        ({"device": "PC2", "ip": "192.168.1.12", "colour": "red"}, "invalid_correction"),
+        ("PC2 192.168.1.12", "invalid_correction"),
+    ],
+)
+def test_bad_corrections_are_rejected_and_change_nothing(corr, code):
+    doc = dup_lan()
+    r = apply_corrections(doc, [corr])
+    assert [x["code"] for x in r["rejected"]] == [code] and r["applied"] == []
+    assert r["topology"] == doc
+
+
+def test_ipv6_correction_uses_the_link_prefix_and_goes_to_network6():
+    r = apply_corrections(lan(), [{"device": "PC2", "ip": "2001:DB8:1::12"}])
+    t = r["topology"]
+    assert t["devices"][3]["network6"] == {
+        "ip_address": "2001:db8:1::12",
+        "prefix_length": 64,
+        "network_address": "2001:db8:1::",
+    }
+    assert t["links"][2]["network6"]["target_ip"] == "2001:db8:1::12" and r["report"]["valid"]
+
+
+def test_router_on_two_links_needs_the_link_only_when_unclear():
+    r = apply_corrections(
+        lan(), [{"device": "R1", "ip": "192.168.1.5"}]
+    )  # its main address is on l1
+    t = r["topology"]
+    assert (
+        t["links"][0]["network"]["source_ip"] == "192.168.1.5"
+        and t["links"][3]["network"]["source_ip"] == "10.0.0.1"
+    )
+    doc = lan()
+    doc["devices"][0]["network"] = dict.fromkeys(doc["devices"][0]["network"])
+    r = apply_corrections(doc, [{"device": "R1", "ip": "192.168.1.5"}])
+    assert r["rejected"][0]["code"] == "link_required" and r["rejected"][0]["hint"] == {
+        "links": ["l1", "l4"]
+    }
+    r = apply_corrections(lan(), [{"device": "R1", "link": "l4", "ip": "10.0.0.2/30"}])
+    assert r["rejected"][0]["code"] == "duplicate_ip"
+
+
+def test_other_link_address_does_not_move_the_main_address():
+    r = apply_corrections(
+        lan(),
+        [
+            {"link": "l4", "network": "10.0.0.4/30"},
+            {"device": "R1", "link": "l4", "ip": "10.0.0.5"},
+            {"device": "R2", "ip": "10.0.0.6"},
+        ],
+    )
+    assert r["rejected"] == [] and r["report"]["valid"], r["report"]["errors"]
+    assert r["topology"]["devices"][0]["network"]["ip_address"] == "192.168.1.1"
+
+
+def test_a_missing_address_is_filled_and_the_link_network_is_derived():
+    doc = lan()
+    doc["links"][3]["network"] = {
+        "network_address": None,
+        "prefix_length": None,
+        "subnet_mask": None,
+        "source_ip": None,
+        "target_ip": None,
+    }
+    doc["devices"][4]["network"] = dict.fromkeys(doc["devices"][4]["network"])
+    r = apply_corrections(
+        doc,
+        [{"device": "R1", "link": "l4", "ip": "10.0.0.1/30"}, {"device": "R2", "ip": "10.0.0.2"}],
+    )
+    assert r["rejected"] == [] and r["report"]["valid"], r["report"]["errors"]
+    assert r["topology"]["links"][3]["network"]["network_address"] == "10.0.0.0"
+
+
+def test_parse_address_forms():
+    assert parse_address("10.0.0.1/24")[1] == 24
+    assert parse_address("10.0.0.1", prefix="24")[1] == 24
+    assert parse_address("10.0.0.1", mask="255.255.255.0")[1] == 24
+    assert parse_address("2001:db8::1/64") == (ipaddress.ip_address("2001:db8::1"), 64)
+    with pytest.raises(CorrectionError):
+        parse_address("10.0.0.1", prefix=True)
+
+
+def test_cli_correct_loop(tmp_path):
+    from vision_pipeline.cli import main
+
+    simple = tmp_path / "topology.simple.json"
+    simple.write_text(json.dumps(dup_lan()))
+    assert main(["validate", "--output-dir", str(tmp_path)]) == 1
+    fixes = '[{"device": "PC2", "ip": "192.168.1.11"}]'
+    assert main(["correct", "--corrections", fixes, "--output-dir", str(tmp_path)]) == 0
+    assert json.loads((tmp_path / "validation.json").read_text())["valid"]
+    assert json.loads((tmp_path / "topology.simple.detected.json").read_text()) == dup_lan()
+    assert (
+        main(
+            [
+                "correct",
+                "--corrections",
+                '[{"device": "PC2", "ip": "1.2.3"}]',
+                "--output-dir",
+                str(tmp_path),
+            ]
+        )
+        == 1
+    )
+    assert json.loads(simple.read_text())["devices"][3]["network"]["ip_address"] == "192.168.1.11"

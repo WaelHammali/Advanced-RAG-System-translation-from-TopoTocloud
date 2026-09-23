@@ -5,6 +5,7 @@
     image -> OpenCV    -> raw_opencv.json -+     (reads the three JSON files back from disk)
 
     topology.simple.json (the RAG input) -> validator -> validation.json (what is wrong, where)
+                         <- user corrections (correct_file), checked again until valid
 
 OpenCV optionally uses raw_yolo / raw_ocr rectangles as masks, so it runs after them.
 Detectors are injectable, so any of them can be replaced by anything implementing the same
@@ -25,12 +26,15 @@ from .schemas.raw import RawOcr, RawOpenCV, RawYolo, read_json, write_json
 from .topology.graph_builder import build_graph
 from .topology.topology_builder import TopologyBuilder
 from .validation import validate
+from .validation.corrections import apply_corrections
 
 log = logging.getLogger("vision_pipeline")
 
 RAW_YOLO, RAW_OCR, RAW_OPENCV = "raw_yolo.json", "raw_ocr.json", "raw_opencv.json"
 FUSION, TOPOLOGY, TOPOLOGY_SIMPLE = "fusion.json", "topology.json", "topology.simple.json"
 VALIDATION = "validation.json"
+#: the minimal form exactly as detected, kept the first time user corrections overwrite it
+TOPOLOGY_SIMPLE_DETECTED = "topology.simple.detected.json"
 
 
 @dataclass
@@ -75,6 +79,7 @@ def clear_outputs(paths: PipelinePaths) -> None:
         paths.topology,
         paths.topology_simple,
         paths.validation,
+        paths.topology_simple.with_name(TOPOLOGY_SIMPLE_DETECTED),
     ):
         p.unlink(missing_ok=True)
 
@@ -212,6 +217,36 @@ class Pipeline:
         if report_out is not None:
             write_json(report_out, report)
         return report
+
+    def correct_file(
+        self,
+        simple_path: str | Path,
+        corrections: list[dict[str, Any]],
+        simple_out: str | Path | None = None,
+        report_out: str | Path | None = None,
+        *,
+        require_ipv4: bool = True,
+    ) -> dict[str, Any]:
+        """Apply user corrections to topology.simple.json, write it back and re-validate.
+
+        Writes in place unless ``simple_out`` is given; the first time a file is overwritten the
+        detected original is kept next to it as topology.simple.detected.json."""
+        original = read_json(simple_path)
+        result = apply_corrections(original, corrections, require_ipv4=require_ipv4)
+        out = Path(simple_out or simple_path)
+        detected = out.with_name(TOPOLOGY_SIMPLE_DETECTED)
+        if out.resolve() == Path(simple_path).resolve() and not detected.exists():
+            write_json(detected, original)
+        TopologyBuilder(self.settings.device_type_aliases).write_simple(result["topology"], out)
+        write_json(report_out or out.with_name(VALIDATION), result["report"])
+        log.info(
+            "Corrections: %d applied, %d rejected -> %s ; validation: %s",
+            len(result["applied"]),
+            len(result["rejected"]),
+            out,
+            result["report"]["status"],
+        )
+        return result
 
     # -------------------------------------------------------------------- full run
     def run(self, image_path: str | Path, output_dir: str | Path | None = None) -> dict[str, Any]:

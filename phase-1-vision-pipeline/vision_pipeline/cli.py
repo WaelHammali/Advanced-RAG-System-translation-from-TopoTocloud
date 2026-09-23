@@ -6,6 +6,7 @@
     python -m vision_pipeline opencv --image diagram.png [--raw-yolo F --raw-ocr F] -> raw_opencv.json
     python -m vision_pipeline fuse   [--raw-yolo F --raw-ocr F --raw-opencv F]      -> fusion.json + topology.json + topology.simple.json
     python -m vision_pipeline validate [--input topology.simple.json] [--allow-ipv6-only]  -> report, exit 1 if invalid
+    python -m vision_pipeline correct  --corrections fixes.json|'[...]' [--input F] [--output F]  -> corrected + re-validated
     python -m vision_pipeline print-config
 
 ``run`` is the default sub-command, so ``python -m vision_pipeline --image diagram.png`` works.
@@ -22,7 +23,7 @@ from .config.settings import Settings
 from .pipeline import Pipeline, output_paths
 from .schemas.raw import RawOcr, RawYolo, read_json
 
-COMMANDS = ("run", "yolo", "ocr", "opencv", "fuse", "validate", "print-config")
+COMMANDS = ("run", "yolo", "ocr", "opencv", "fuse", "validate", "correct", "print-config")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -85,6 +86,23 @@ def _parser() -> argparse.ArgumentParser:
         "--allow-ipv6-only",
         action="store_true",
         help="accept devices/links that only have IPv6 (the RAG itself requires IPv4)",
+    )
+
+    p = sub.add_parser(
+        "correct", help="apply user corrections to topology.simple.json, then re-validate"
+    )
+    common(p, image=False)
+    p.add_argument(
+        "--corrections",
+        required=True,
+        help="JSON file with a list of corrections, or the JSON list itself (see validation.corrections)",
+    )
+    p.add_argument(
+        "--input", help="minimal topology to correct (default: <output-dir>/topology.simple.json)"
+    )
+    p.add_argument("--output", help="where to write the corrected topology (default: in place)")
+    p.add_argument(
+        "--allow-ipv6-only", action="store_true", help="accept devices/links that only have IPv6"
     )
 
     p = sub.add_parser("print-config", help="print the effective settings and thresholds as JSON")
@@ -153,6 +171,21 @@ def _dispatch(args: argparse.Namespace, settings: Settings) -> int:
         )
         _print_report(report)
         return 0 if report["valid"] else 1
+    elif args.command == "correct":
+        text = args.corrections.strip()
+        corrections = json.loads(text) if text.startswith("[") else read_json(args.corrections)
+        result = pipe.correct_file(
+            args.input or paths.topology_simple,
+            corrections,
+            args.output,
+            require_ipv4=not args.allow_ipv6_only,
+        )
+        for a in result["applied"]:
+            print(f"applied  #{a['index']}: " + "; ".join(a["changes"]))
+        for r in result["rejected"]:
+            print(f"REJECTED #{r['index']}: {r['code']}: {r['message']}")
+        _print_report(result["report"])
+        return 0 if result["report"]["valid"] and not result["rejected"] else 1
     return 0
 
 

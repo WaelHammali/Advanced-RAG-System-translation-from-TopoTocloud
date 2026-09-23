@@ -7,6 +7,7 @@
     python -m vision_pipeline fuse   [--raw-yolo F --raw-ocr F --raw-opencv F]      -> fusion.json + topology.json + topology.simple.json
     python -m vision_pipeline validate [--input topology.simple.json] [--allow-ipv6-only]  -> report, exit 1 if invalid
     python -m vision_pipeline correct  --corrections fixes.json|'[...]' [--input F] [--output F]  -> corrected + re-validated
+    python -m vision_pipeline autoaddress [--ipv4-base 192.168.0.0/16] [--ipv6-base 2001:db8::/48] [--ipv6-vlsm]
     python -m vision_pipeline print-config
 
 ``run`` is the default sub-command, so ``python -m vision_pipeline --image diagram.png`` works.
@@ -23,7 +24,17 @@ from .config.settings import Settings
 from .pipeline import Pipeline, output_paths
 from .schemas.raw import RawOcr, RawYolo, read_json
 
-COMMANDS = ("run", "yolo", "ocr", "opencv", "fuse", "validate", "correct", "print-config")
+COMMANDS = (
+    "run",
+    "yolo",
+    "ocr",
+    "opencv",
+    "fuse",
+    "validate",
+    "correct",
+    "autoaddress",
+    "print-config",
+)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -101,6 +112,31 @@ def _parser() -> argparse.ArgumentParser:
         "--input", help="minimal topology to correct (default: <output-dir>/topology.simple.json)"
     )
     p.add_argument("--output", help="where to write the corrected topology (default: in place)")
+    p.add_argument(
+        "--allow-ipv6-only", action="store_true", help="accept devices/links that only have IPv6"
+    )
+
+    p = sub.add_parser(
+        "autoaddress", help="replace all addresses with a VLSM plan, then re-validate"
+    )
+    common(p, image=False)
+    p.add_argument(
+        "--input",
+        help="minimal topology to re-address (default: <output-dir>/topology.simple.json)",
+    )
+    p.add_argument("--output", help="where to write the result (default: in place)")
+    p.add_argument(
+        "--ipv4-base", default="192.168.0.0/16", help="IPv4 space to carve (default 192.168.0.0/16)"
+    )
+    p.add_argument("--no-ipv4", action="store_true", help="leave IPv4 as it is")
+    p.add_argument(
+        "--ipv6-base", help="IPv6 space to carve (default 2001:db8::/48 when the topology has IPv6)"
+    )
+    p.add_argument(
+        "--ipv6-vlsm",
+        action="store_true",
+        help="size IPv6 segments to fit like IPv4 instead of one /64 per segment",
+    )
     p.add_argument(
         "--allow-ipv6-only", action="store_true", help="accept devices/links that only have IPv6"
     )
@@ -186,6 +222,20 @@ def _dispatch(args: argparse.Namespace, settings: Settings) -> int:
             print(f"REJECTED #{r['index']}: {r['code']}: {r['message']}")
         _print_report(result["report"])
         return 0 if result["report"]["valid"] and not result["rejected"] else 1
+    elif args.command == "autoaddress":
+        result = pipe.autoaddress_file(
+            args.input or paths.topology_simple,
+            args.output,
+            ipv4_base=None if args.no_ipv4 else args.ipv4_base,
+            ipv6_base=args.ipv6_base,
+            ipv6_prefix=None if args.ipv6_vlsm else 64,
+            require_ipv4=not args.allow_ipv6_only,
+        )
+        for s in result["plan"]["segments"]:
+            nets = "  ".join(f"{s[k]['network']}" for k in ("ipv4", "ipv6") if k in s)
+            print(f"{s['id']}: {s['hosts']} device(s)  {nets}")
+        _print_report(result["report"])
+        return 0 if result["report"]["valid"] else 1
     return 0
 
 

@@ -6,6 +6,7 @@
 
     topology.simple.json (the RAG input) -> validator -> validation.json (what is wrong, where)
                          <- user corrections (correct_file), checked again until valid
+                         <- or auto-addressing (autoaddress_file): a fresh VLSM plan
 
 OpenCV optionally uses raw_yolo / raw_ocr rectangles as masks, so it runs after them.
 Detectors are injectable, so any of them can be replaced by anything implementing the same
@@ -26,6 +27,7 @@ from .schemas.raw import RawOcr, RawOpenCV, RawYolo, read_json, write_json
 from .topology.graph_builder import build_graph
 from .topology.topology_builder import TopologyBuilder
 from .validation import validate
+from .validation.autoaddress import autoaddress
 from .validation.corrections import apply_corrections
 
 log = logging.getLogger("vision_pipeline")
@@ -35,6 +37,7 @@ FUSION, TOPOLOGY, TOPOLOGY_SIMPLE = "fusion.json", "topology.json", "topology.si
 VALIDATION = "validation.json"
 #: the minimal form exactly as detected, kept the first time user corrections overwrite it
 TOPOLOGY_SIMPLE_DETECTED = "topology.simple.detected.json"
+ADDRESSING_PLAN = "addressing_plan.json"
 
 
 @dataclass
@@ -80,6 +83,7 @@ def clear_outputs(paths: PipelinePaths) -> None:
         paths.topology_simple,
         paths.validation,
         paths.topology_simple.with_name(TOPOLOGY_SIMPLE_DETECTED),
+        paths.topology_simple.with_name(ADDRESSING_PLAN),
     ):
         p.unlink(missing_ok=True)
 
@@ -233,12 +237,7 @@ class Pipeline:
         detected original is kept next to it as topology.simple.detected.json."""
         original = read_json(simple_path)
         result = apply_corrections(original, corrections, require_ipv4=require_ipv4)
-        out = Path(simple_out or simple_path)
-        detected = out.with_name(TOPOLOGY_SIMPLE_DETECTED)
-        if out.resolve() == Path(simple_path).resolve() and not detected.exists():
-            write_json(detected, original)
-        TopologyBuilder(self.settings.device_type_aliases).write_simple(result["topology"], out)
-        write_json(report_out or out.with_name(VALIDATION), result["report"])
+        out = self._write_revised(simple_path, original, result, simple_out, report_out)
         log.info(
             "Corrections: %d applied, %d rejected -> %s ; validation: %s",
             len(result["applied"]),
@@ -247,6 +246,43 @@ class Pipeline:
             result["report"]["status"],
         )
         return result
+
+    def autoaddress_file(
+        self,
+        simple_path: str | Path,
+        simple_out: str | Path | None = None,
+        report_out: str | Path | None = None,
+        **options: Any,
+    ) -> dict[str, Any]:
+        """Re-address topology.simple.json with a VLSM plan (see validation.autoaddress), write it
+        back (in place unless ``simple_out``), plus addressing_plan.json and validation.json."""
+        original = read_json(simple_path)
+        result = autoaddress(original, **options)
+        out = self._write_revised(simple_path, original, result, simple_out, report_out)
+        write_json(out.with_name(ADDRESSING_PLAN), result["plan"])
+        log.info(
+            "Auto-addressing: %d segments -> %s ; validation: %s",
+            len(result["plan"]["segments"]),
+            out,
+            result["report"]["status"],
+        )
+        return result
+
+    def _write_revised(
+        self,
+        simple_path: str | Path,
+        original: dict[str, Any],
+        result: dict[str, Any],
+        simple_out: str | Path | None,
+        report_out: str | Path | None,
+    ) -> Path:
+        out = Path(simple_out or simple_path)
+        detected = out.with_name(TOPOLOGY_SIMPLE_DETECTED)
+        if out.resolve() == Path(simple_path).resolve() and not detected.exists():
+            write_json(detected, original)
+        TopologyBuilder(self.settings.device_type_aliases).write_simple(result["topology"], out)
+        write_json(report_out or out.with_name(VALIDATION), result["report"])
+        return out
 
     # -------------------------------------------------------------------- full run
     def run(self, image_path: str | Path, output_dir: str | Path | None = None) -> dict[str, Any]:

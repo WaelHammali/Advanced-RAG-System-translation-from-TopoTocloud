@@ -588,3 +588,115 @@ def test_cli_correct_loop(tmp_path):
         == 1
     )
     assert json.loads(simple.read_text())["devices"][3]["network"]["ip_address"] == "192.168.1.11"
+
+
+# ---------------------------------------------------------------------- auto-addressing
+from vision_pipeline.validation.autoaddress import AutoAddressError, autoaddress  # noqa: E402
+
+
+def vlsm_exercise():
+    """R1-R2-R3 in a chain, each router with one LAN behind a switch: 50, 20 and 5 PCs."""
+    devs = [dev("r1", "router", "R1"), dev("r2", "router", "R2"), dev("r3", "router", "R3")]
+    links = [
+        lk("p1", "r1", "r2", "0.0.0.0", 30, None, None),
+        lk("p2", "r2", "r3", "0.0.0.0", 30, None, None),
+    ]
+    for name, router, n in (("A", "r1", 50), ("B", "r2", 20), ("C", "r3", 5)):
+        devs.append(dev(f"sw{name}", "switch", f"SW{name}"))
+        links.append(lk(f"u{name}", router, f"sw{name}", "0.0.0.0", 30, None, None))
+        for i in range(n):
+            devs.append(dev(f"pc{name}{i}", "pc", f"PC{name}{i}"))
+            links.append(lk(f"l{name}{i}", f"sw{name}", f"pc{name}{i}", "0.0.0.0", 30, None, None))
+    return {"devices": devs, "links": links}
+
+
+def test_autoaddress_solves_the_classic_vlsm_exercise():
+    r = autoaddress(vlsm_exercise(), ipv4_base="172.16.0.0/24")
+    assert r["report"]["valid"], r["report"]["errors"]
+    got = {s["hosts"]: (s["ipv4"]["network"], s["ipv4"]["mask"]) for s in r["plan"]["segments"]}
+    assert got == {
+        51: ("172.16.0.0/26", "255.255.255.192"),
+        21: ("172.16.0.64/27", "255.255.255.224"),
+        6: ("172.16.0.96/29", "255.255.255.248"),
+        2: ("172.16.0.108/30", "255.255.255.252"),
+    }
+    p2p = [s["ipv4"]["network"] for s in r["plan"]["segments"] if s["hosts"] == 2]
+    assert p2p == ["172.16.0.104/30", "172.16.0.108/30"]
+    lan_a = next(s for s in r["plan"]["segments"] if s["hosts"] == 51)
+    assert lan_a["ipv4"]["addresses"]["r1"] == "172.16.0.1"  # the gateway gets the first address
+    assert "network6" not in json.dumps(r["topology"])
+
+
+def test_autoaddress_blocks_never_overlap_and_fit_their_hosts():
+    r = autoaddress(vlsm_exercise(), ipv4_base="10.0.0.0/8", ipv6_base="2001:db8:acad::/48")
+    nets = [
+        ipaddress.ip_network(s[k]["network"])
+        for s in r["plan"]["segments"]
+        for k in ("ipv4", "ipv6")
+    ]
+    assert not any(a.overlaps(b) for i, a in enumerate(nets) for b in nets[i + 1 :])
+    assert all(s["ipv6"]["network"].endswith("/64") for s in r["plan"]["segments"])
+    assert r["report"]["valid"] and all(
+        s["ipv4"]["usable"] >= s["hosts"] for s in r["plan"]["segments"]
+    )
+
+
+def test_autoaddress_ipv6_can_be_sized_like_ipv4():
+    doc = vlsm_exercise()
+    for x in doc["links"]:
+        x["network"] = dict.fromkeys(x["network"])  # an IPv6-only diagram
+    r = autoaddress(
+        doc, ipv4_base=None, ipv6_base="2001:db8:acad::/64", ipv6_prefix=None, require_ipv4=False
+    )
+    got = sorted((s["hosts"], s["ipv6"]["network"]) for s in r["plan"]["segments"])
+    assert got == [
+        (2, "2001:db8:acad::68/126"),
+        (2, "2001:db8:acad::6c/126"),
+        (6, "2001:db8:acad::60/125"),
+        (21, "2001:db8:acad::40/123"),
+        (51, "2001:db8:acad::/122"),
+    ]
+    assert r["report"]["valid"], r["report"]["errors"]
+
+
+def test_autoaddress_repairs_a_broken_detection_and_keeps_names():
+    doc = changed(
+        lambda d: (
+            d["links"][2]["network"].update(target_ip="255.255.0.0"),
+            d["devices"][3]["network"].update(ip_address="192.168.1.10"),
+            d["links"][3]["network"].update(subnet_mask="255.0.255.0"),
+        )
+    )
+    assert not validate(doc)["valid"]
+    r = autoaddress(doc)
+    assert r["report"]["valid"], r["report"]["errors"]
+    assert [d["name"] for d in r["topology"]["devices"]] == [d["name"] for d in doc["devices"]]
+    assert r["topology"]["devices"][1]["network"] == dict.fromkeys(
+        ("ip_address", "prefix_length", "subnet_mask", "network_address")
+    )  # the switch
+    assert (
+        "network6" in r["topology"]["links"][0]
+    )  # the input had IPv6, so IPv6 is re-addressed too
+
+
+def test_autoaddress_refuses_a_base_that_is_too_small():
+    with pytest.raises(AutoAddressError, match="needs 112"):
+        autoaddress(vlsm_exercise(), ipv4_base="172.16.0.0/26")
+    with pytest.raises(AutoAddressError):
+        autoaddress(lan(), ipv4_base="10.0.0.1/8")
+    with pytest.raises(AutoAddressError):
+        autoaddress(lan(), ipv4_base="2001:db8::/48")
+
+
+def test_cli_autoaddress(tmp_path, capsys):
+    from vision_pipeline.cli import main
+
+    simple = tmp_path / "topology.simple.json"
+    simple.write_text(json.dumps(vlsm_exercise()))
+    assert main(["autoaddress", "--output-dir", str(tmp_path), "--ipv4-base", "172.16.0.0/24"]) == 0
+    assert "172.16.0.0/26" in capsys.readouterr().out
+    assert (
+        json.loads((tmp_path / "addressing_plan.json").read_text())["ipv4_base"] == "172.16.0.0/24"
+    )
+    assert json.loads((tmp_path / "validation.json").read_text())["valid"]
+    assert main(["autoaddress", "--output-dir", str(tmp_path), "--ipv4-base", "172.16.0.0/26"]) == 2

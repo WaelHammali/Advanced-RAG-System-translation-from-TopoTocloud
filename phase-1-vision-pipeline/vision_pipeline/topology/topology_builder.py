@@ -7,6 +7,9 @@ Output: the canonical, network-oriented topology (devices, links, unresolved). N
 
 It reshapes and *validates*; it never adds information. Every violated invariant raises
 :class:`TopologyValidationError` rather than being silently repaired.
+
+IPv6 travels in separate ``network6`` blocks (devices and links), present only when the
+diagram has IPv6 information, so IPv4-only output is unchanged. IPv6 has no dotted mask.
 """
 
 from __future__ import annotations
@@ -16,12 +19,21 @@ from pathlib import Path
 from typing import Any
 
 from .. import __version__
-from ..ocr.address_normalizer import ip_to_int, network_of, parse_host_suffix, prefix_to_mask
+from ..ocr.address_normalizer import (
+    canonical_ip,
+    host_suffix_version,
+    ip_version,
+    mask_for,
+    max_prefix,
+    network_of_any,
+)
 from ..schemas.raw import write_json
 
 TOPOLOGY_SCHEMA_VERSION = "1.0"
 NETWORK_KEYS = ("ip_address", "prefix_length", "subnet_mask", "network_address", "host_suffix")
 LINK_NETWORK_KEYS = ("network_address", "prefix_length", "subnet_mask")
+NETWORK6_KEYS = ("ip_address", "prefix_length", "network_address", "host_suffix")
+LINK_NETWORK6_KEYS = ("network_address", "prefix_length")
 
 #: unresolved kinds that are not network information (stray labels, titles...) and stay in fusion.json only
 _FUSION_ONLY_KINDS = {"text"}
@@ -41,6 +53,13 @@ SIMPLE_LINK_NETWORK_KEYS = (
     "source_ip",
     "target_ip",
 )
+#: optional IPv6 extension blocks of the minimal form (only present when IPv6 was detected)
+SIMPLE_NETWORK6_KEYS = ("ip_address", "prefix_length", "network_address")
+SIMPLE_LINK_NETWORK6_KEYS = ("network_address", "prefix_length", "source_ip", "target_ip")
+_FAMILY_KEYS = {
+    4: (SIMPLE_NETWORK_KEYS, LINK_NETWORK_KEYS),
+    6: (SIMPLE_NETWORK6_KEYS, LINK_NETWORK6_KEYS),
+}
 
 
 def _short_id(ident: str) -> str:
@@ -113,68 +132,67 @@ class TopologyBuilder:
                 if lk[end] is not None:
                     links_of.setdefault(lk[end], []).append(lk["id"])
 
-        link_net = {lk["id"]: _link_network(lk["network"]) for lk in topology["links"]}
-        ends: dict[tuple[str, str], dict[str, Any] | None] = {}
-        for lk in topology["links"]:
-            for end in ("source", "target"):
-                if lk[end] is not None:
-                    ends[(lk["id"], lk[end])] = _endpoint_address(
-                        by_id[lk[end]], lk["id"], link_net[lk["id"]], len(links_of[lk[end]])
-                    )
-        for lk in topology["links"]:  # an unlabelled cable is the one network its ends agree on
-            if link_net[lk["id"]] is None:
-                known = {
-                    (a["network_address"], a["prefix_length"])
-                    for end in ("source", "target")
-                    if lk[end] is not None
-                    for a in [ends[(lk["id"], lk[end])]]
-                    if a and a["prefix_length"] is not None
-                }
-                if len(known) == 1:
-                    net, prefix = known.pop()
-                    link_net[lk["id"]] = {
-                        "network_address": net,
-                        "prefix_length": prefix,
-                        "subnet_mask": prefix_to_mask(prefix),
-                    }
+        view = {fam: _family_view(topology, fam, by_id, links_of) for fam in (4, 6)}
+        has6 = {d["id"] for d in topology["devices"] if "network6" in d}
+        has6 |= {
+            lk[end]
+            for lk in topology["links"]
+            if "network6" in lk
+            for end in ("source", "target")
+            if lk[end] is not None
+        }
 
         devices = []
         for d in topology["devices"]:
-            network = {k: d["network"][k] for k in SIMPLE_NETWORK_KEYS}
-            if network["ip_address"] is None:
-                used = [ends[(lid, d["id"])] for lid in links_of.get(d["id"], [])]
-                first = next((a for a in used if a is not None), None)
-                if first is not None:
-                    network = {k: first[k] for k in SIMPLE_NETWORK_KEYS}
-            devices.append(
-                {
-                    "id": short[d["id"]],
-                    "type": self.type_aliases.get(d["type"], d["type"]),
-                    "name": d["name"],
-                    "network": network,
-                }
-            )
+            dev = {
+                "id": short[d["id"]],
+                "type": self.type_aliases.get(d["type"], d["type"]),
+                "name": d["name"],
+            }
+            for fam, block in ((4, "network"), (6, "network6")):
+                if fam == 6 and d["id"] not in has6:
+                    continue
+                keys = _FAMILY_KEYS[fam][0]
+                network = {k: d.get(block, {}).get(k) for k in keys}
+                if network["ip_address"] is None:
+                    used = [view[fam][1][(lid, d["id"])] for lid in links_of.get(d["id"], [])]
+                    first = next((a for a in used if a is not None), None)
+                    if first is not None:
+                        network = {k: first[k] for k in keys}
+                dev[block] = network
+            devices.append(dev)
         links = []
         for lk in topology["links"]:
-            net = link_net[lk["id"]] or dict.fromkeys(LINK_NETWORK_KEYS)
-            end_ip = {
-                end: None
-                if lk[end] is None or ends[(lk["id"], lk[end])] is None
-                else ends[(lk["id"], lk[end])]["ip_address"]
-                for end in ("source", "target")
+            out = {
+                "id": short[lk["id"]],
+                "source": short[lk["source"]],
+                "target": None if lk["target"] is None else short[lk["target"]],
             }
-            links.append(
-                {
-                    "id": short[lk["id"]],
-                    "source": short[lk["source"]],
-                    "target": None if lk["target"] is None else short[lk["target"]],
-                    "network": {
-                        **{k: net[k] for k in LINK_NETWORK_KEYS},
-                        "source_ip": end_ip["source"],
-                        "target_ip": end_ip["target"],
-                    },
+            for fam, block in ((4, "network"), (6, "network6")):
+                link_net, ends = view[fam]
+                if (
+                    fam == 6
+                    and "network6" not in lk
+                    and not any(
+                        lk[e] is not None and ends[(lk["id"], lk[e])] is not None
+                        for e in ("source", "target")
+                    )
+                ):
+                    continue
+                keys = _FAMILY_KEYS[fam][1]
+                net = link_net[lk["id"]] or dict.fromkeys(keys)
+                end_ip = {
+                    e: None
+                    if lk[e] is None or ends[(lk["id"], lk[e])] is None
+                    else ends[(lk["id"], lk[e])]["ip_address"]
+                    for e in ("source", "target")
                 }
-            )
+                out[block] = {
+                    **{k: net[k] for k in keys},
+                    "source_ip": end_ip["source"],
+                    "target_ip": end_ip["target"],
+                }
+            links.append(out)
         simple = {"devices": devices, "links": links}
         validate_simple(simple)
         return simple
@@ -186,11 +204,17 @@ class TopologyBuilder:
     # ------------------------------------------------------------------------- shaping
     @staticmethod
     def _device(n: dict[str, Any]) -> dict[str, Any]:
+        extra = (
+            {"network6": {k: n["network6"].get(k) for k in NETWORK6_KEYS}}
+            if "network6" in n
+            else {}
+        )
         return {
             "id": n["id"],
             "type": n["type"],
             "name": n.get("name"),
             "network": {k: n["network"].get(k) for k in NETWORK_KEYS},
+            **extra,
             "addresses": [
                 {
                     k: a.get(k)
@@ -213,11 +237,17 @@ class TopologyBuilder:
 
     @staticmethod
     def _link(e: dict[str, Any]) -> dict[str, Any]:
+        extra = (
+            {"network6": {k: e["network6"].get(k) for k in LINK_NETWORK6_KEYS}}
+            if "network6" in e
+            else {}
+        )
         return {
             "id": e["id"],
             "source": e.get("source"),
             "target": e.get("target"),
             "network": {k: e["network"].get(k) for k in LINK_NETWORK_KEYS},
+            **extra,
             "confidence": dict(e["confidence"]),
             "flags": list(e.get("flags", [])),
             "provenance": e.get("provenance", {}),
@@ -231,17 +261,65 @@ class TopologyBuilder:
 # ------------------------------------------------------------------ minimal-form helpers
 
 
-def _link_network(network: dict[str, Any]) -> dict[str, Any] | None:
-    if network.get("network_address") is None or network.get("prefix_length") is None:
+def _family_of(a: dict[str, Any]) -> int | None:
+    return ip_version(a.get("ip_address") or a.get("network_address") or "")
+
+
+def _family_view(
+    topology: dict[str, Any], fam: int, by_id: dict[str, Any], links_of: dict[str, list[str]]
+) -> tuple[dict[str, Any], dict[tuple[str, str], Any]]:
+    """For one address family: each link's network, and the address each link end uses."""
+    block, keys = ("network", LINK_NETWORK_KEYS) if fam == 4 else ("network6", LINK_NETWORK6_KEYS)
+    link_net = {lk["id"]: _link_network(lk.get(block), keys) for lk in topology["links"]}
+    ends: dict[tuple[str, str], dict[str, Any] | None] = {}
+    for lk in topology["links"]:
+        for end in ("source", "target"):
+            if lk[end] is not None:
+                ends[(lk["id"], lk[end])] = _endpoint_address(
+                    by_id[lk[end]], lk["id"], link_net[lk["id"]], len(links_of[lk[end]]), fam
+                )
+    for lk in topology["links"]:  # an unlabelled cable is the one network its ends agree on
+        if link_net[lk["id"]] is None:
+            known = {
+                (a["network_address"], a["prefix_length"])
+                for end in ("source", "target")
+                if lk[end] is not None
+                for a in [ends[(lk["id"], lk[end])]]
+                if a and a["prefix_length"] is not None
+            }
+            if len(known) == 1:
+                net, prefix = known.pop()
+                link_net[lk["id"]] = {"network_address": net, "prefix_length": prefix}
+                if fam == 4:
+                    link_net[lk["id"]]["subnet_mask"] = mask_for(prefix, 4)
+    return link_net, ends
+
+
+def _link_network(
+    network: dict[str, Any] | None, keys: tuple[str, ...] = LINK_NETWORK_KEYS
+) -> dict[str, Any] | None:
+    if (
+        not network
+        or network.get("network_address") is None
+        or network.get("prefix_length") is None
+    ):
         return None
-    return {k: network.get(k) for k in LINK_NETWORK_KEYS}
+    return {k: network.get(k) for k in keys}
 
 
 def _endpoint_address(
-    device: dict[str, Any], link_id: str, link_net: dict[str, Any] | None, n_links: int
+    device: dict[str, Any],
+    link_id: str,
+    link_net: dict[str, Any] | None,
+    n_links: int,
+    fam: int = 4,
 ) -> dict[str, Any] | None:
-    """The address ``device`` uses on ``link_id``, or ``None`` if that is not certain."""
-    known = [a for a in device.get("addresses", []) if a.get("ip_address") is not None]
+    """The ``fam`` address ``device`` uses on ``link_id``, or ``None`` if that is not certain."""
+    known = [
+        a
+        for a in device.get("addresses", [])
+        if a.get("ip_address") is not None and _family_of(a) == fam
+    ]
 
     def unique(entries: list[dict[str, Any]]) -> dict[str, Any] | None:
         distinct = {a["ip_address"] for a in entries}
@@ -257,7 +335,8 @@ def _endpoint_address(
         inside = [
             a
             for a in unbound
-            if network_of(a["ip_address"], link_net["prefix_length"]) == link_net["network_address"]
+            if network_of_any(a["ip_address"], link_net["prefix_length"])
+            == link_net["network_address"]
         ]
         return unique(inside) if inside else None
     return unique(unbound) if n_links == 1 else None  # a single-link device uses it there
@@ -290,9 +369,13 @@ def validate_topology(t: dict[str, Any]) -> None:
             )
         if lk["source"] == lk["target"]:
             raise TopologyValidationError(f"link {lk['id']}: source equals target")
-        _check_addr(lk["network"], f"link {lk['id']}", host=False)
+        _check_addr(lk["network"], f"link {lk['id']}", host=False, family=4)
+        if "network6" in lk:
+            _check_addr(lk["network6"], f"link {lk['id']} network6", host=False, family=6)
     for d in t["devices"]:
-        _check_addr(d["network"], f"device {d['id']}", host=True)
+        _check_addr(d["network"], f"device {d['id']}", host=True, family=4)
+        if "network6" in d:
+            _check_addr(d["network6"], f"device {d['id']} network6", host=True, family=6)
         for a in d["addresses"]:
             _check_addr(a, f"device {d['id']} address", host=True)
             if a.get("ip_address") is not None and not a.get("provenance", {}).get("ip_address"):
@@ -310,42 +393,84 @@ def validate_simple(t: dict[str, Any]) -> None:
     if len(ids) != len(set(ids)) or len({lk["id"] for lk in t["links"]}) != len(t["links"]):
         raise TopologyValidationError("duplicate ids in minimal topology")
     for d in t["devices"]:
-        if set(d) != {"id", "type", "name", "network"} or set(d["network"]) != set(
-            SIMPLE_NETWORK_KEYS
+        if (
+            not {"id", "type", "name", "network"}
+            <= set(d)
+            <= {"id", "type", "name", "network", "network6"}
+            or set(d["network"]) != set(SIMPLE_NETWORK_KEYS)
+            or ("network6" in d and set(d["network6"]) != set(SIMPLE_NETWORK6_KEYS))
         ):
             raise TopologyValidationError(f"device {d.get('id')}: unexpected shape")
-        _check_addr(d["network"], f"device {d['id']}", host=False)
+        _check_addr(d["network"], f"device {d['id']}", host=False, family=4)
+        if "network6" in d:
+            _check_addr(d["network6"], f"device {d['id']} network6", host=False, family=6)
     for lk in t["links"]:
-        if set(lk) != {"id", "source", "target", "network"} or set(lk["network"]) != set(
-            SIMPLE_LINK_NETWORK_KEYS
+        if (
+            not {"id", "source", "target", "network"}
+            <= set(lk)
+            <= {"id", "source", "target", "network", "network6"}
+            or set(lk["network"]) != set(SIMPLE_LINK_NETWORK_KEYS)
+            or ("network6" in lk and set(lk["network6"]) != set(SIMPLE_LINK_NETWORK6_KEYS))
         ):
             raise TopologyValidationError(f"link {lk.get('id')}: unexpected shape")
-        for end in ("source", "target"):
-            if lk[end] is not None and lk[end] not in set(ids):
-                raise TopologyValidationError(f"link {lk['id']}: {end} {lk[end]!r} is not a device")
-            ip = lk["network"][f"{end}_ip"]
-            if ip is not None and (lk[end] is None or ip_to_int(ip) is None):
-                raise TopologyValidationError(f"link {lk['id']}: invalid {end}_ip {ip!r}")
-        _check_addr(
-            {k: lk["network"][k] for k in LINK_NETWORK_KEYS}, f"link {lk['id']}", host=False
-        )
+        for block, fam, keys in (
+            ("network", 4, LINK_NETWORK_KEYS),
+            ("network6", 6, LINK_NETWORK6_KEYS),
+        ):
+            if block not in lk:
+                continue
+            for end in ("source", "target"):
+                if lk[end] is not None and lk[end] not in set(ids):
+                    raise TopologyValidationError(
+                        f"link {lk['id']}: {end} {lk[end]!r} is not a device"
+                    )
+                ip = lk[block][f"{end}_ip"]
+                if ip is not None and (
+                    lk[end] is None or ip_version(ip) != fam or canonical_ip(ip) != ip
+                ):
+                    raise TopologyValidationError(
+                        f"link {lk['id']}: invalid {block}.{end}_ip {ip!r}"
+                    )
+            _check_addr(
+                {k: lk[block][k] for k in keys}, f"link {lk['id']} {block}", host=False, family=fam
+            )
 
 
-def _check_addr(a: dict[str, Any], where: str, host: bool) -> None:
+def _check_addr(a: dict[str, Any], where: str, host: bool, family: int | None = None) -> None:
+    """Arithmetic consistency of one address block. ``family`` pins it to IPv4 or IPv6;
+    ``None`` (a device's address list) accepts either, but never a mix inside one entry."""
     ip, prefix = a.get("ip_address"), a.get("prefix_length")
     mask, net, suffix = a.get("subnet_mask"), a.get("network_address"), a.get("host_suffix")
-    if ip is not None and ip_to_int(ip) is None:
-        raise TopologyValidationError(f"{where}: invalid ip_address {ip!r}")
+    fam = family
+    for key, value in (("ip_address", ip), ("network_address", net)):
+        if value is None:
+            continue
+        v = ip_version(value)
+        if v is None or canonical_ip(value) != value:
+            raise TopologyValidationError(f"{where}: invalid {key} {value!r}")
+        if fam is not None and v != fam:
+            raise TopologyValidationError(f"{where}: {key} {value!r} is not IPv{fam}")
+        fam = v
+    if mask is not None:
+        if fam == 6:
+            raise TopologyValidationError(f"{where}: IPv6 has no subnet_mask (got {mask!r})")
+        fam = 4
     if prefix is not None:
-        if mask is not None and prefix_to_mask(prefix) != mask:
+        if (
+            not isinstance(prefix, int)
+            or isinstance(prefix, bool)
+            or not 0 <= prefix <= max_prefix(fam or 4)
+        ):
+            raise TopologyValidationError(f"{where}: invalid prefix_length {prefix!r}")
+        if mask is not None and mask_for(prefix, 4) != mask:
             raise TopologyValidationError(
                 f"{where}: subnet_mask {mask!r} does not match prefix /{prefix}"
             )
-        if net is not None and ip is not None and network_of(ip, prefix) != net:
+        if net is not None and ip is not None and network_of_any(ip, prefix) != net:
             raise TopologyValidationError(
                 f"{where}: network_address {net!r} does not match {ip}/{prefix}"
             )
-    if net is not None and ip_to_int(net) is None:
-        raise TopologyValidationError(f"{where}: invalid network_address {net!r}")
-    if host and suffix is not None and parse_host_suffix(suffix) is None:
-        raise TopologyValidationError(f"{where}: invalid host_suffix {suffix!r}")
+    if host and suffix is not None:
+        sv = host_suffix_version(suffix)
+        if sv is None or (fam is not None and sv != fam):
+            raise TopologyValidationError(f"{where}: invalid host_suffix {suffix!r}")

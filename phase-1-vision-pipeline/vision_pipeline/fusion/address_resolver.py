@@ -25,7 +25,11 @@ Step 3 - confidence: geometric mean of every link in the evidence chain; below t
 ``resolver.tier.medium`` threshold the address is NOT stored.
 
 Step 4 - consistency: two suffixes producing the same address on one link, or two different
-suffixes on the same (device, link), cancel each other (unresolved, evidence kept).
+suffixes of the same family on the same (device, link), cancel each other (unresolved,
+evidence kept). A ".2" and a "::2" on one dual-stack cable are two different addresses.
+
+IPv6: a "::N" suffix resolves only against the link's IPv6 network label, a ".N" suffix only
+against its IPv4 label.
 """
 
 from __future__ import annotations
@@ -34,7 +38,7 @@ from collections import defaultdict
 
 from ..config.thresholds import Thresholds
 from ..geometry import clamp01, dist, rect_polyline_distance
-from ..ocr.address_normalizer import resolve_host_suffix
+from ..ocr.address_normalizer import host_suffix_version, resolve_host_suffix
 from ..schemas.raw import YoloDetection
 from .confidence import AMBIGUOUS, FLAGGED, UNRESOLVED, combine, decide, tier_of
 from .models import DeviceState, LinkState, SuffixBinding
@@ -46,10 +50,12 @@ def resolve_addresses(
     links: dict[str, LinkState],
     networks: dict[str, LinkNetwork],
     thr: Thresholds,
+    networks6: dict[str, LinkNetwork] | None = None,
 ) -> list[SuffixBinding]:
     bindings = [b for d in devices.values() for b in d.suffixes]
     for b in bindings:
-        _resolve_one(b, devices[b.device_id].det, links, networks, thr)
+        nets = (networks6 or {}) if host_suffix_version(b.text.host_suffix) == 6 else networks
+        _resolve_one(b, devices[b.device_id].det, links, nets, thr)
     _enforce_consistency(bindings)
     return bindings
 
@@ -156,10 +162,10 @@ def _resolve_one(
 
 def _enforce_consistency(bindings: list[SuffixBinding]) -> None:
     resolved = [b for b in bindings if b.status == "resolved"]
-    by_device_link: dict[tuple[str, str], list[SuffixBinding]] = defaultdict(list)
+    by_device_link: dict[tuple[str, str, int | None], list[SuffixBinding]] = defaultdict(list)
     by_link_ip: dict[tuple[str, str], list[SuffixBinding]] = defaultdict(list)
     for b in resolved:
-        by_device_link[(b.device_id, b.link_id)].append(b)
+        by_device_link[(b.device_id, b.link_id, host_suffix_version(b.text.host_suffix))].append(b)
         by_link_ip[(b.link_id, b.address.ip_address)].append(b)
 
     def cancel(group: list[SuffixBinding], reason: str) -> None:

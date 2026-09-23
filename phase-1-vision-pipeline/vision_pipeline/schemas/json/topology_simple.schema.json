@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "topology.simple.json",
-  "description": "Minimal form passed to the RAG (its input contract). Derived from topology.json by the Topology Builder. null = missing/unresolved.",
+  "description": "Minimal form passed to the RAG (its input contract). Derived from topology.json by the Topology Builder. null = missing/unresolved. IPv6 information, when detected, is carried in optional 'network6' extension blocks (no subnet mask; prefix 0-128); IPv4-only topologies never contain them.",
   "type": "object",
   "required": [
     "devices",
@@ -62,6 +62,37 @@
                   "string",
                   "null"
                 ]
+              },
+              "network_address": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "network6": {
+            "type": "object",
+            "required": [
+              "ip_address",
+              "prefix_length",
+              "network_address"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "ip_address": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "prefix_length": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 128
               },
               "network_address": {
                 "type": [
@@ -142,6 +173,46 @@
                   "null"
                 ],
                 "description": "address the target end uses on this link"
+              }
+            }
+          },
+          "network6": {
+            "type": "object",
+            "required": [
+              "network_address",
+              "prefix_length",
+              "source_ip",
+              "target_ip"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "network_address": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "prefix_length": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 128
+              },
+              "source_ip": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "IPv6 address the source end uses on this link"
+              },
+              "target_ip": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "IPv6 address the target end uses on this link"
               }
             }
           }

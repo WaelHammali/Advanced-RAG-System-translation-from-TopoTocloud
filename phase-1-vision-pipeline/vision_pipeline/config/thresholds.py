@@ -73,6 +73,10 @@ class GroupingThresholds:
             "device_name|ip": 1.0,
             "ip|subnet_mask": 1.0,
             "device_name|subnet_mask": 0.6,
+            # dual-stack label: the IPv6 line usually sits under the IPv4 (and its mask) line
+            "device_name|ip6": 1.0,
+            "ip|ip6": 0.9,
+            "ip6|subnet_mask": 0.8,
         }
     )
     #: penalty applied when reading order is unusual (e.g. mask above IP)

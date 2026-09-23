@@ -29,7 +29,7 @@ from ..config.thresholds import GroupingThresholds
 from ..geometry import Rect, clamp01, reading_order_key
 from ..ocr.semantic_parser import ParsedText
 
-_RANK = {"device_name": 0, "ip": 1, "subnet_mask": 2}
+_RANK = {"device_name": 0, "ip": 1, "subnet_mask": 2, "ip6": 3}
 
 
 @dataclass

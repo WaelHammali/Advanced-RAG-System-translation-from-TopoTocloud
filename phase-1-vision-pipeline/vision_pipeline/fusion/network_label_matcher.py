@@ -13,6 +13,10 @@ score (weights in ``NetworkLabelScoring``):
 
 The winner per label comes from :func:`confidence.decide`. If two different labels claim
 the same link with comparable confidence, NEITHER is applied (ambiguous).
+
+IPv4 and IPv6 labels are separate attributes: a dual-stack cable may carry one of each
+(``10.0.0.0/30`` and ``2001:db8:1::/64``); only two labels of the SAME family conflict.
+IPv6 network forms go up to /126 (see ``NormalizedAddress.is_network_form``).
 """
 
 from __future__ import annotations
@@ -125,7 +129,8 @@ def match_labels(
     links: dict[str, LinkCandidate],
     devices: list[YoloDetection],
     p: NetworkLabelScoring,
-) -> tuple[list[LabelMatch], dict[str, LinkNetwork]]:
+) -> tuple[list[LabelMatch], dict[str, LinkNetwork], dict[str, LinkNetwork]]:
+    """Returns (matches, IPv4 networks by link id, IPv6 networks by link id)."""
     matches: list[LabelMatch] = []
     for lab in labels:
         scored = []
@@ -139,13 +144,13 @@ def match_labels(
             LabelMatch(lab.id, d, d.key if d.stored else None, d.score if d.stored else None, flags)
         )
 
-    by_link: dict[str, list[LabelMatch]] = {}
+    label_of = {lab.id: lab for lab in labels}
+    by_link: dict[tuple[str, int], list[LabelMatch]] = {}
     for m in matches:
         if m.link_id is not None:
-            by_link.setdefault(m.link_id, []).append(m)
-    label_of = {lab.id: lab for lab in labels}
-    networks: dict[str, LinkNetwork] = {}
-    for lid, ms in by_link.items():
+            by_link.setdefault((m.link_id, label_of[m.label_id].address.version), []).append(m)
+    networks: dict[int, dict[str, LinkNetwork]] = {4: {}, 6: {}}
+    for (lid, version), ms in by_link.items():
         ms.sort(key=lambda m: (-(m.confidence or 0), m.label_id))
         values = {
             (
@@ -169,15 +174,16 @@ def match_labels(
             continue
         top = ms[0]
         addr = label_of[top.label_id].address
+        origin = {"network_address": "ocr", "prefix_length": "ocr"}
+        if version == 4:
+            origin["subnet_mask"] = "derived_from_prefix_length"
         net = NormalizedAddress(
             network_address=addr.network_address,
             prefix_length=addr.prefix_length,
             subnet_mask=addr.subnet_mask,
-            field_origin={
-                "network_address": "ocr",
-                "prefix_length": "ocr",
-                "subnet_mask": "derived_from_prefix_length",
-            },
+            field_origin=origin,
         )
-        networks[lid] = LinkNetwork(top.label_id, net, top.confidence or 0.0, list(top.flags))
-    return matches, networks
+        networks[version][lid] = LinkNetwork(
+            top.label_id, net, top.confidence or 0.0, list(top.flags)
+        )
+    return matches, networks[4], networks[6]

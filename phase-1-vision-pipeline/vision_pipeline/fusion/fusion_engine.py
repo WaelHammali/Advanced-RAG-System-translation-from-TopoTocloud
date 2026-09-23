@@ -44,7 +44,7 @@ from .ocr_grouper import TextGroup, group_texts
 from .spatial_matcher import Association, match_text_to_device
 
 FUSION_SCHEMA_VERSION = "1.0"
-ADDRESS_TYPES = ("ipv4", "ipv4_cidr", "subnet_mask")
+ADDRESS_TYPES = ("ipv4", "ipv4_cidr", "subnet_mask", "ipv6", "ipv6_cidr")
 
 
 @dataclass
@@ -62,6 +62,7 @@ class FusionResult:
     links: dict[str, LinkState] = field(default_factory=dict)
     label_matches: list[LabelMatch] = field(default_factory=list)
     networks: dict[str, LinkNetwork] = field(default_factory=dict)
+    networks6: dict[str, LinkNetwork] = field(default_factory=dict)
     suffix_bindings: list[SuffixBinding] = field(default_factory=list)
     ambiguous: list[dict[str, Any]] = field(default_factory=list)
     unresolved: list[dict[str, Any]] = field(default_factory=list)
@@ -185,7 +186,13 @@ class FusionEngine:
         self._pass6_suffixes(r)  # pass 6
         self._pass7_links(r)  # pass 7
         self._pass8_labels(r)  # pass 8
-        r.suffix_bindings = resolve_addresses(r.devices, r.links, r.networks, self.thr)  # pass 9
+        r.suffix_bindings = resolve_addresses(
+            r.devices,
+            r.links,
+            r.networks,
+            self.thr,  # pass 9
+            networks6=r.networks6,
+        )
         self._collect_unresolved(r)
         if self.graph_builder is not None:  # pass 10
             r.graph = self.graph_builder(r)
@@ -254,31 +261,35 @@ class FusionEngine:
         p = self.thr.address_to_device
         handled: set[str] = set()
 
-        # ---- (a) texts placed via a group: ip + mask read together
+        # ---- (a) texts placed via a group: ip + mask read together (and an IPv6 line of a
+        #          dual-stack label, which is a second, separate address of the same device)
         for g in r.groups:
             pl = r.group_placements.get(g.id)
-            ip, mask = g.by_slot("ip"), g.by_slot("subnet_mask")
-            if pl is None or not pl.stored or (ip is None and mask is None):
+            if pl is None or not pl.stored:
                 continue
-            members = [m for m in (ip, mask) if m is not None]
-            conf = combine(pl.confidence, *[m.semantic_confidence for m in members])
-            assocs = [
-                Association.build("address", m.id, pl.decision, conf, p.tier, via_group=g.id)
-                for m in members
-            ]
-            r.address_associations.extend(assocs)
-            handled.update(m.id for m in members)
-            if assocs[0].stored:
-                addr = _address_from(ip, mask)
-                self._attach_binding(
-                    r,
-                    pl.device_id,
-                    addr,
-                    [m.id for m in members],
-                    assocs[0].confidence,
-                    g.id,
-                    list(assocs[0].flags),
-                )
+            ip, mask, ip6 = g.by_slot("ip"), g.by_slot("subnet_mask"), g.by_slot("ip6")
+            parts = [[m for m in (ip, mask) if m is not None], [ip6] if ip6 is not None else []]
+            for members in parts:
+                if not members:
+                    continue
+                conf = combine(pl.confidence, *[m.semantic_confidence for m in members])
+                assocs = [
+                    Association.build("address", m.id, pl.decision, conf, p.tier, via_group=g.id)
+                    for m in members
+                ]
+                r.address_associations.extend(assocs)
+                handled.update(m.id for m in members)
+                if assocs[0].stored:
+                    addr = _address_from(ip, mask) if members[0] is not ip6 else ip6.address
+                    self._attach_binding(
+                        r,
+                        pl.device_id,
+                        addr,
+                        [m.id for m in members],
+                        assocs[0].confidence,
+                        g.id,
+                        list(assocs[0].flags),
+                    )
 
         # ---- (b) remaining address texts: each scored on its own
         for item in r.parsed:
@@ -307,8 +318,12 @@ class FusionEngine:
         # ---- (c) a stray mask and a prefix-less IP on the same device belong together
         for dev in r.devices.values():
             ip_only = [
-                b for b in dev.bindings if b.address.ip_address and b.address.prefix_length is None
-            ]
+                b
+                for b in dev.bindings
+                if b.address.ip_address
+                and b.address.prefix_length is None
+                and b.address.version == 4
+            ]  # a mask never belongs to an IPv6 address
             mask_only = [
                 b for b in dev.bindings if b.address.ip_address is None and b.address.subnet_mask
             ]
@@ -464,7 +479,7 @@ class FusionEngine:
         labels = [p for p in r.parsed if p.is_network_form]
         if not labels:
             return
-        r.label_matches, r.networks = match_labels(
+        r.label_matches, r.networks, r.networks6 = match_labels(
             labels,
             {lid: lk.candidate for lid, lk in r.links.items()},
             [d.det for d in r.devices.values()],

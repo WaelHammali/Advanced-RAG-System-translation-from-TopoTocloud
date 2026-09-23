@@ -8,6 +8,10 @@ Device ``addresses`` holds EVERY address binding of the device (a router with tw
 subnets has two). The scalar ``network`` block mirrors the device's single address, and is
 all-null when the device has none or several (a scalar cannot represent several addresses
 without picking one, which would be a guess).
+
+IPv6 is kept apart: ``network`` only ever mirrors an IPv4 address, and a device (or link)
+with IPv6 information gets an extra ``network6`` block built by the same rule. IPv4-only
+diagrams therefore produce exactly the same output as before IPv6 support.
 """
 
 from __future__ import annotations
@@ -16,11 +20,25 @@ from typing import TYPE_CHECKING, Any
 
 from ..fusion.confidence import combine
 from ..fusion.models import AddressBinding, DeviceState, LinkState, SuffixBinding
+from ..ocr.address_normalizer import host_suffix_version, ip_version
 
 if TYPE_CHECKING:  # avoid a runtime import cycle (fusion_engine imports nothing from here)
     from ..fusion.fusion_engine import FusionResult
 
 NETWORK_KEYS = ("ip_address", "prefix_length", "subnet_mask", "network_address", "host_suffix")
+#: IPv6 has no dotted subnet mask: the prefix length is the whole story
+NETWORK6_KEYS = ("ip_address", "prefix_length", "network_address", "host_suffix")
+LINK_NETWORK6_KEYS = ("network_address", "prefix_length")
+
+
+def address_family(a: dict[str, Any]) -> int | None:
+    """4 or 6 for one address entry (a lone mask is IPv4), ``None`` if it carries nothing."""
+    for key in ("ip_address", "network_address"):
+        if a.get(key) is not None:
+            return ip_version(a[key])
+    if a.get("subnet_mask") is not None:
+        return 4
+    return host_suffix_version(a.get("host_suffix"))
 
 
 def _r(v: float | None) -> float | None:
@@ -127,11 +145,9 @@ def _node(d: DeviceState) -> dict[str, Any]:
     # unresolved suffix happened to be nearby, or a good, directly-read IP gets hidden behind a
     # null scalar `network` block for no reason. But if a bare suffix is the device's ONLY piece
     # of information, it is still the single thing to show (Test E: host_suffix alone, ip null).
-    substantive = [a for a in addrs if a["ip_address"] is not None or a["subnet_mask"] is not None]
-    candidates = substantive or addrs
-    mirror = {k: None for k in NETWORK_KEYS}
-    if len(candidates) == 1:
-        mirror = {k: candidates[0][k] for k in NETWORK_KEYS}
+    v4 = [a for a in addrs if address_family(a) in (4, None)]
+    v6 = [a for a in addrs if address_family(a) == 6]
+    mirror = _mirror(v4, NETWORK_KEYS)
 
     name = d.name.text.normalized_text if d.name else None
     name_conf = _r(d.name.confidence) if d.name else None
@@ -167,7 +183,7 @@ def _node(d: DeviceState) -> dict[str, Any]:
         flags += [f"name:{f}" for f in d.name.flags]
     for a in addrs:
         flags += [f"address:{f}" for f in a["flags"]]
-    return {
+    node = {
         "id": det.id,
         "type": det.cls,
         "name": name,
@@ -183,6 +199,18 @@ def _node(d: DeviceState) -> dict[str, Any]:
         "provenance": prov,
         "bbox": det.bbox.to_list(),
     }
+    if v6:
+        node["network6"] = _mirror(v6, NETWORK6_KEYS)
+    return node
+
+
+def _mirror(addrs: list[dict[str, Any]], keys: tuple[str, ...]) -> dict[str, Any]:
+    """The single address of one family, or all-null when there are none or several."""
+    substantive = [a for a in addrs if a["ip_address"] is not None or a["subnet_mask"] is not None]
+    candidates = substantive or addrs
+    if len(candidates) == 1:
+        return {k: candidates[0][k] for k in keys}
+    return {k: None for k in keys}
 
 
 # ---------------------------------------------------------------------------------- edges
@@ -225,18 +253,35 @@ def _edge(r: FusionResult, lk: LinkState, penalty: float) -> dict[str, Any]:
                 "evidence": {"text_id": net.label_id, "link_id": lk.id},
             }
         flags += [f"network:{f}" for f in net.flags]
+    net6 = r.networks6.get(lk.id)
+    extra: dict[str, Any] = {}
+    if net6 is not None:
+        extra["network6"] = {k: getattr(net6.address, k) for k in LINK_NETWORK6_KEYS}
+        prov["network6"] = {
+            fld: {
+                "method": "ocr_direct" if origin == "ocr" else origin,
+                "sources": ["ocr", "opencv", "fusion"],
+                "evidence": {"text_id": net6.label_id, "link_id": lk.id},
+            }
+            for fld, origin in net6.address.field_origin.items()
+        }
+        flags += [f"network6:{f}" for f in net6.flags]
+    conf = {
+        "cable_detection": _r(cable),
+        "source_endpoint": _r(src.confidence) if src else None,
+        "target_endpoint": _r(tgt.confidence) if tgt else None,
+        "network_label": _r(net.confidence) if net else None,
+        "overall": overall,
+    }
+    if net6 is not None:
+        conf["network6_label"] = _r(net6.confidence)
     return {
         "id": lk.id,
         "source": lk.source,
         "target": lk.target,
         "network": network,
-        "confidence": {
-            "cable_detection": _r(cable),
-            "source_endpoint": _r(src.confidence) if src else None,
-            "target_endpoint": _r(tgt.confidence) if tgt else None,
-            "network_label": _r(net.confidence) if net else None,
-            "overall": overall,
-        },
+        **extra,
+        "confidence": conf,
         "flags": sorted(set(flags)),
         "provenance": prov,
         "geometry": {

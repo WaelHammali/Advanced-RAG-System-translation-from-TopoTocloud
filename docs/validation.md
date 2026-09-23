@@ -1,115 +1,86 @@
-# Architecture readiness before translation
+# Readiness and clarification
 
-`net2cloud/readiness.py` checks the source topology before retrieval, model creation or
-translation. It never modifies the JSON, fills missing values or calls an LLM.
+The input remains `devices` and `links`. Missing OSPF, RIP, gateways, services or
+packages is **not** an error: the external NLP/configuration stage handles those
+later. This application neither starts that agent nor executes configuration.
+
+`check_readiness(architecture)` returns:
+
+- `ready`, `status`: whether topology prerequisites pass.
+- `revision`: SHA-256 of the canonical source JSON, or null for non-JSON input.
+- `errors`: blocking findings with `code`, JSON Pointer `path`, and `message`.
+- `issues`: matching `(entity_id, path, message)` tuples for clarification.
+- `warnings`, `warning_issues`: advisory findings, explicitly separate from blockers.
+
+Tuples become three-element arrays in JSON. IDs identify devices or links, never
+display names; the path disambiguates duplicate or missing IDs. A finding outside
+an existing entity uses an empty ID. `list_issues()` returns blocking tuples only.
 
 ```bash
-python app.py check --input examples/architecture.json
+python -m net2cloud check --input examples/architecture.json
 ```
 
-Ready input returns `{"ready": true, "status": "ready", "errors": []}`. Incomplete
-input returns a report such as:
+## Blocking checks
 
-```json
-{
-  "ready": false,
-  "status": "not_ready",
-  "errors": [
-    {
-      "code": "missing_ip_address",
-      "path": "/devices/0/network/ip_address",
-      "message": "Provide an IPv4 address string."
-    }
-  ]
-}
+Every device needs a unique ID, name, type and network object. Non-L2 devices need
+IPv4, prefix (integer 0–32), matching subnet mask and canonical network address.
+Switch/bridge/hub network fields may all be null. Every link needs a unique ID,
+existing source and target IDs, a consistent network and each non-L2 endpoint's IP
+inside that network. A device's main IP must occur on one of its links.
+
+Every device must have a valid link to another device. A PC has exactly one link.
+Separate connected groups are permitted. Duplicate IDs, self-links, unknown
+endpoints, malformed objects, non-finite numbers, non-string JSON keys, cycles and
+nesting above 64 levels are rejected. Parsing also rejects duplicate JSON keys.
+
+These are the current input policies, not a claim that every real network fits
+this format. For example, directly cabled hosts outside the declared link subnet
+are rejected. Passing these checks does not prove reachability.
+
+Same-IP endpoint conflicts on one L2 segment are **warnings**, allowing deliberate
+negative labs. Switches/bridges/hubs join those segments; routers do not. These
+warnings appear in the same report and must remain visible to callers. The gate
+does not certify route convergence, protocol support, cloud capacity or ping.
+
+## Applying explicit corrections
+
+The external agent can return `(entity_id, path, replacement_value)` tuples. It
+must supply the revision from the report it used. `apply_corrections()` operates
+on a copy and returns `{architecture, validation}`. A stale revision, mismatched
+ID/path, overlapping paths or an unsupported edit rejects the whole batch.
+
+```python
+from net2cloud import apply_corrections, check_readiness
+
+report = check_readiness(source)
+result = apply_corrections(
+    source,
+    [("device_1", "/devices/0/network/ip_address", "192.168.1.10")],
+    expected_revision=report["revision"],
+)
+# Resubmit result["architecture"] only when result["validation"]["ready"] is true.
 ```
 
-All detected issues are returned together, with JSON Pointer paths. The calling
-application can show them to the user, complete the JSON and resubmit it.
+Corrections can replace device/link identity fields, network objects/fields, or
+whole `/devices` and `/links` lists (empty entity ID). They cannot introduce
+routing or execute arbitrary operations. Whole-list replacements are treated as
+explicit graph replacements and fully revalidated without inferred rewiring.
 
-## Required information
+Single-field corrections recompute redundant subnet mask/network base fields.
+An explicitly supplied conflicting field is retained and reported. Main-IP edits
+update matching link endpoint copies; a missing main IP on a single-linked device
+can fill its endpoint copy. An endpoint-IP edit updates a matching main IP. A
+unique device-ID rename updates existing link references. No peer IP, route, cable
+or gateway is invented; ambiguous missing router addresses require explicit edits.
 
-- Nonempty `devices` and `links` lists of objects.
-- Every device has a unique, nonempty `id`, a nonempty `name` and a nonempty
-  `type`, such as `pc`, `router`, `server` or `switch`.
-- Every device has a `network` object with `ip_address`, `prefix_length`
-  (0–32), `subnet_mask` and `network_address`. For any type other than
-  `switch`/`bridge`/`hub`, all four must be present (not `null`) and
-  mutually consistent: `subnet_mask` must be the canonical mask for
-  `prefix_length`, and `network_address` must be the canonical network base
-  of `ip_address`/`prefix_length`. A `switch`/`bridge`/`hub` may leave all
-  four fields `null`; an explicitly supplied address on one is still checked
-  the same way.
-- A `pc` may have exactly one link; any other type may have any number of links.
-- Every link has a unique, nonempty `id`, and `source`/`target` naming existing
-  device `id`s (not display names). A link cannot connect a device to itself.
-- Every link has its own `network` object with `network_address`,
-  `prefix_length` and `subnet_mask`, always required and internally
-  consistent the same way as a device's.
-- Every link's `network` also has `source_ip` and `target_ip`: the address
-  each end uses on that link. Each is required unless that end is a
-  switch/bridge/hub (then it may be `null`), must be a valid IPv4 address, and
-  must lie inside the link's network. A router joining two subnets uses a
-  different address on each link.
-- A device's own `ip_address` must be the address it uses on at least one of
-  its links (for a `pc`, its only link).
-- Every device has at least one valid link to a different device. A
-  self-loop does not satisfy this requirement. A typo or dangling reference
-  does not make an isolated device ready.
-- All values must be JSON-compatible, with finite numbers, string object keys,
-  no reference cycles and at most 64 levels of nesting. JSON Pointer errors escape
-  `/` and `~` in extension keys.
+```bash
+python -m net2cloud correct --input architecture.json \
+  --corrections corrections.json --revision REVISION_FROM_CHECK \
+  --output corrected.json
+```
 
-## Completeness is different from working connectivity
-
-This gate is deliberately strict about the input's own consistency (an address
-must match its own mask, and a link's network must match its own devices), but
-it says nothing about whether devices can actually reach each other beyond one
-link, or whether a plan built from this input is correct. Separate connected
-groups are permitted as long as no individual device is alone; the gate does
-not require all devices to reach each other. It does not check for duplicate
-addresses across the whole topology (only within one connected group — see
-below), route feasibility, service readiness, implementation support or cloud
-limits.
-
-One consequence of the per-link check: two devices in genuinely different
-subnets, cabled directly with no router between them, are rejected. One cable
-is one network, so one end's address falls outside the link's network.
-Routers joining different subnets are fine: each of their links carries its
-own network and per-end addresses (see
-[router_chain_no_routes.json](../examples/edge_cases/router_chain_no_routes.json)).
-
-These limits are deliberate: passing readiness means the requested identity,
-addressing and link prerequisites are complete and self-consistent. It does
-not mean ping will pass or every feature has an implementation.
-
-## Issue list
-
-`net2cloud.issues.list_issues(architecture)` returns every readiness problem as a
-`(device, other, message)` tuple, for a person or an assistant to act on. `other`
-is `""` when one device is concerned; it names the second device for a shared
-ID or a shared IP address. Problems belonging to no device have an empty
-device. Same-address clashes are reported for devices in one connected group
-only and never block translation, so the list can be non-empty while the file
-is ready. It does not change the architecture or the `check` report.
-
-## API and CLI behavior
-
-`net2cloud.plan_architecture()` and `net2cloud.planner.plan_with_rag()` both enforce the gate.
-`ArchitectureNotReady` exposes its machine-readable `report`. The application
-checks before constructing retrieval; the planner also checks direct calls before
-constructing a provider client. There is no bypass flag.
-
-`plan` and `context` exit with status 2 and write the report to stderr if input is
-not ready. No new plan/context output file is published; an existing file is left
-untouched. Do not consume an old plan after a failed command.
-
-`check` writes the report to stdout (and optional `--output`), exits 0 for ready or
-2 for not ready, and requires no model dependencies. Malformed JSON and unrelated
-runtime errors use exit 1. Discussion and correction remain in the calling app.
-
-## AWS-only boundary
-
-AWS is this application's only target provider; that is fixed by the planner
-prompt and is not a field the input JSON carries. Unknown extension fields
-otherwise remain attached to the source.
+The output is an envelope containing corrected `architecture` and `validation`,
+not a plan input by itself. `check`/`correct` exit 0 when ready or 2 when blocked.
+`plan`/`context` fail before retrieval on incomplete input, writing the same report
+to stderr and exiting 2. Runtime errors exit 1. Atomic writes preserve existing
+files on failed commands; do not consume an old plan after a failure.

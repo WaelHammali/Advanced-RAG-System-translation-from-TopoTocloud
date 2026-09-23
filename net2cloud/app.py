@@ -10,6 +10,7 @@ from typing import Any
 
 from .config import RETRIEVAL_BACKEND, TOP_K
 from .contracts import JSONObject, Retriever
+from .corrections import apply_corrections
 from .json_io import dumps_json, loads_json, write_json
 from .planner import plan_with_rag
 from .readiness import ArchitectureNotReady, check_readiness, require_ready
@@ -59,6 +60,17 @@ def _argument_parser() -> argparse.ArgumentParser:
     )
     check.add_argument("--input", type=Path, required=True)
     check.add_argument("--output", type=Path, help="Optional readiness report JSON file")
+    correct = subcommands.add_parser(
+        "correct", help="Apply explicit correction tuples and revalidate."
+    )
+    correct.add_argument("--input", type=Path, required=True)
+    correct.add_argument(
+        "--corrections", type=Path, required=True, help="JSON list of [ID, path, value]"
+    )
+    correct.add_argument("--revision", required=True, help="Revision from the readiness report")
+    correct.add_argument(
+        "--output", type=Path, help="Optional corrected architecture and validation envelope"
+    )
     return parser
 
 
@@ -71,6 +83,14 @@ def main(argv: list[str] | None = None) -> int:
         architecture = loads_json(args.input.read_text(encoding="utf-8"))
         if args.command == "check":
             result = check_readiness(architecture)
+        elif args.command == "correct":
+            if args.output and args.output.resolve() == args.corrections.resolve():
+                raise ValueError("The output path must differ from the corrections path.")
+            result = apply_corrections(
+                architecture,
+                loads_json(args.corrections.read_text(encoding="utf-8")),
+                expected_revision=args.revision,
+            )
         else:
             require_ready(architecture)
             retriever = KnowledgeRetriever(backend=args.retrieval, top_k=args.top_k)
@@ -82,7 +102,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.output:
             write_json(args.output, result, indent=2)
         print(serialized, end="")
-        return 2 if args.command == "check" and not result["ready"] else 0
+        report = result.get("validation", result)
+        return 2 if args.command in {"check", "correct"} and not report["ready"] else 0
     except ArchitectureNotReady as error:
         print(dumps_json(error.report), file=sys.stderr)
         return 2

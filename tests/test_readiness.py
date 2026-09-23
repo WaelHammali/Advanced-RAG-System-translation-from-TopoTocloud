@@ -22,7 +22,8 @@ def architecture():
 def test_complete_examples_are_ready_and_unchanged(filename):
     architecture = json.loads((ROOT / "examples" / filename).read_text())
     original = deepcopy(architecture)
-    assert check_readiness(architecture) == {"ready": True, "status": "ready", "errors": []}
+    report = check_readiness(architecture)
+    assert report["ready"] and report["errors"] == report["issues"] == []
     assert architecture == original
 
 

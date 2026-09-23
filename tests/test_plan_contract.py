@@ -472,7 +472,8 @@ def test_package_cli_and_compatibility_launcher_agree_without_dependencies():
         )
         assert result.returncode == 0, result.stderr
         results.append(json.loads(result.stdout))
-    assert results[0] == results[1] == {"ready": True, "status": "ready", "errors": []}
+    assert results[0] == results[1]
+    assert results[0]["ready"] and results[0]["issues"] == []
 
 
 def test_documented_aws_example_matches_the_response_boundary():

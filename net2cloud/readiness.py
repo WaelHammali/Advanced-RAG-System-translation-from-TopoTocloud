@@ -15,11 +15,14 @@ different endpoint IP on each link; its own `ip_address` must be one of them.
 
 from __future__ import annotations
 
+import hashlib
 import ipaddress
 import math
 from typing import Any
 
 from .contracts import JSONObject
+from .issues import address_warnings, issue_tuple
+from .json_io import dumps_json
 
 LAYER2_TYPES = {"switch", "bridge", "hub"}
 DEVICE_NETWORK_FIELDS = ("ip_address", "prefix_length", "subnet_mask", "network_address")
@@ -181,8 +184,19 @@ def check_readiness(architecture: Any) -> JSONObject:
     def error(code: str, path: str, message: str) -> None:
         errors.append({"code": code, "path": path, "message": message})
 
+    revision = None
+
     def result() -> JSONObject:
-        return {"ready": not errors, "status": "not_ready" if errors else "ready", "errors": errors}
+        warnings = address_warnings(architecture) if not errors else []
+        return {
+            "ready": not errors,
+            "status": "not_ready" if errors else "ready",
+            "revision": revision,
+            "errors": errors,
+            "issues": [issue_tuple(architecture, e) for e in errors],
+            "warnings": warnings,
+            "warning_issues": [issue_tuple(architecture, w) for w in warnings],
+        }
 
     def named(value: Any) -> bool:
         return isinstance(value, str) and bool(value.strip())
@@ -193,6 +207,8 @@ def check_readiness(architecture: Any) -> JSONObject:
     errors.extend(_json_errors(architecture))
     if errors:
         return result()
+
+    revision = hashlib.sha256(dumps_json(architecture, sort_keys=True).encode()).hexdigest()
 
     devices = architecture.get("devices")
     if not isinstance(devices, list) or not devices:

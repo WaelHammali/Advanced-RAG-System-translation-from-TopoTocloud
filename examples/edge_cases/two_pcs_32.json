@@ -31,7 +31,9 @@
       "network": {
         "network_address": "10.0.0.0",
         "prefix_length": 30,
-        "subnet_mask": "255.255.255.252"
+        "subnet_mask": "255.255.255.252",
+        "source_ip": "10.0.0.1",
+        "target_ip": "10.0.0.2"
       }
     }
   ]

@@ -33,7 +33,8 @@ from live ping tests.
 | Two devices without a link | Reject | Both isolated. |
 | Device connected to itself | Reject | Self-links do not satisfy the no-isolation policy. |
 | Two PCs connected directly, distinct addresses in the same subnet | Accept | Local communication needs no router. |
-| Direct PCs in genuinely different subnets, no intermediate router | Reject | A link has one network object; it cannot honestly describe two disjoint subnets, and a fabricated covering block would misrepresent the data. |
+| Direct PCs in genuinely different subnets, no intermediate router | Reject | One cable is one network; one end's link address falls outside it. |
+| PC1–R1–R2–PC2, each link its own subnet, no routes | Accept | Routers use a different address per link. Preserve the missing routes: PC1 must not reach PC2. |
 | Direct PCs on the two addresses of a /31 | Accept | Valid point-to-point addressing; the link's network is the /31 itself. |
 | Direct PCs with distinct /32 addresses, link network a covering /30 | Accept | Each host keeps its own maximally specific mask; the link's broader network contains both. |
 | PC and router only | Accept | Direct peer reachability can work; this says nothing about other destinations. |
@@ -44,7 +45,8 @@ from live ping tests.
 | One extra isolated device beside a valid network | Reject | The valid part does not excuse the isolated device. |
 | Duplicate device ID or link ID | Reject | References are ambiguous. |
 | A pc with two or more links | Reject | Only a pc is capped at one link; router/server/switch may have any number. |
-| A device's address outside its own link's declared network | Reject | The device and link disagree about the subnet. |
+| A link's source_ip/target_ip outside that link's network, or missing at a non-switch end | Reject | The link's own data is inconsistent or incomplete. |
+| A device's ip_address not used on any of its links | Reject | The device and its links disagree about its address. |
 | subnet_mask not matching prefix_length, or network_address not matching ip_address/prefix_length | Reject | Internally inconsistent addressing. |
 | IPv6-only or DHCP-only host without explicit IPv4 | Reject | Outside the current explicit-IPv4 readiness contract. |
 | Large topology | Shape-dependent | No fixed device-count claim; free API token limits and worker capacity can still prevent use. |
@@ -69,7 +71,8 @@ device/link identity and addressing.
   paths. There is no architecture file-size or API-token-fit guarantee.
 - Every device's `network` object needs all four fields non-null (except
   `switch`/`bridge`/`hub`, which may leave all four null); every link's
-  `network` object always needs all three fields non-null.
+  `network` object always needs its three network fields non-null, plus
+  `source_ip`/`target_ip` (null only at a switch/bridge/hub end).
 - Unknown extension fields remain unchanged if they contain valid JSON. Passing
   readiness does not claim those fields have a recognized schema or implementation.
 - All detected readiness errors are collected in the existing `errors` envelope.

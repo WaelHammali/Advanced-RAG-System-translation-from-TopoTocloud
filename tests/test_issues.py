@@ -69,7 +69,7 @@ def test_the_same_address_in_one_group_names_both_devices(architecture):
     # PC1 (device_1, listed first) takes SRV1's (device_4, listed later) address;
     # the later device in list order is the one named as having the clash.
     architecture["devices"][0]["network"]["ip_address"] = "192.168.1.20"
-    architecture["devices"][0]["network"]["network_address"] = "192.168.1.0"
+    architecture["links"][0]["network"]["source_ip"] = "192.168.1.20"
     issues = list_issues(architecture)
     assert ("SRV1", "PC1", "same IP address as PC1") in issues
     assert check_readiness(architecture)["ready"]  # reported, but never blocks translation
@@ -99,6 +99,8 @@ def test_separate_groups_may_reuse_addresses():
                 "network_address": f"{prefix}0",
                 "prefix_length": 24,
                 "subnet_mask": "255.255.255.0",
+                "source_ip": f"{prefix}1",
+                "target_ip": f"{prefix}2",
             },
         }
         return devices, link
@@ -134,18 +136,27 @@ def test_the_architecture_is_never_changed(architecture):
     assert architecture == before
 
 
-def test_link_endpoint_subnet_mismatch_names_the_mismatched_device(architecture):
-    architecture["links"][1]["network"] = {
-        "network_address": "172.16.0.0",
-        "prefix_length": 30,
-        "subnet_mask": "255.255.255.252",
-    }
+def test_a_link_ip_outside_the_network_names_the_device_and_link(architecture):
+    architecture["links"][1]["network"].update(
+        network_address="172.16.0.0", prefix_length=30, subnet_mask="255.255.255.252"
+    )
     issues = list_issues(architecture)
-    assert (
-        "R1",
-        "",
-        "a connected device's address is outside this link's network",
-    ) in issues
+    assert ("R1", "", "IP address on link link_2 is outside the link's network") in issues
+
+
+def test_a_missing_link_ip_names_the_device_and_link(architecture):
+    architecture["links"][1]["network"]["source_ip"] = None
+    assert ("R1", "", "no IP address on link link_2") in list_issues(architecture)
+
+
+def test_a_link_ip_reused_by_another_device_in_the_group_is_reported():
+    architecture = json.loads(
+        (ROOT / "examples/edge_cases/router_chain_no_routes.json").read_text()
+    )
+    # PC2 claims R2's LAN-side address on link_3.
+    architecture["devices"][3]["network"]["ip_address"] = "10.0.2.1"
+    architecture["links"][2]["network"]["target_ip"] = "10.0.2.1"
+    assert ("PC2", "R2", "same IP address as R2") in list_issues(architecture)
 
 
 @pytest.mark.parametrize(
@@ -173,5 +184,7 @@ def test_prefixes_from_zero_to_thirty_two_are_accepted(architecture, prefix):
         "network_address": str(network.network_address),
         "prefix_length": prefix,
         "subnet_mask": str(network.netmask),
+        "source_ip": "192.168.1.10",
+        "target_ip": None,  # SW1's end
     }
     assert not [i for i in list_issues(architecture) if i[0] == "PC1"]

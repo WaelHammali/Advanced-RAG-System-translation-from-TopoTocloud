@@ -96,7 +96,7 @@
     },
     {
       "path": "kb/rules/input_contract.md",
-      "sha256": "165be37b6c4b30f5d5677136022b1afdabbfa20037588e69be1df888e77943f0"
+      "sha256": "3288e0b7bd9ff770b114e8a20670fe538b4173e27145047d8f9d448f88b1fdf2"
     },
     {
       "path": "kb/rules/internet_patterns.md",
@@ -631,8 +631,8 @@
       "title": "Consume architecture JSON without losing configuration",
       "kind": "rule",
       "mode": "all",
-      "characters": 1300,
-      "sha256": "2b8bf757e61a53c35ef6f37e3d8c49b49380aca2744a47538fa100a51196a1ed",
+      "characters": 1332,
+      "sha256": "6805eb51ce25bec596745fa559a4d36eb5978129da5930e400c6453707b49677",
       "sources": [
         "PROJECT"
       ],

@@ -4,11 +4,13 @@ Readiness checks a devices/links topology JSON: names, addressing and graph
 references. It does not predict reachability, repair settings or certify
 implementation support.
 
-A device carries at most one address, in its own `network` object (not per
-link). Switch/bridge/hub devices may leave every `network` field null. Every
-other device must have a complete, internally consistent `network` object,
-and every link must have its own complete, internally consistent `network`
-object that agrees with any addressed device at either end.
+A device's own `network` object holds its main address. Switch/bridge/hub
+devices may leave every `network` field null. Every other device must have a
+complete, internally consistent `network` object. Every link has its own
+complete, internally consistent `network` object, plus `source_ip` and
+`target_ip`: the address each end uses on that link (null only at a
+switch/bridge/hub end). A router that joins two subnets therefore uses a
+different endpoint IP on each link; its own `ip_address` must be one of them.
 """
 
 from __future__ import annotations
@@ -253,6 +255,7 @@ def check_readiness(architecture: Any) -> JSONObject:
     connected: set[str] = set()
     link_ids: set[str] = set()
     link_counts: dict[str, int] = {identifier: 0 for identifier in device_paths}
+    endpoint_ips: dict[str, set[ipaddress.IPv4Address]] = {}
     for index, link in enumerate(links):
         path = f"/links/{index}"
         if not isinstance(link, dict):
@@ -295,14 +298,26 @@ def check_readiness(architecture: Any) -> JSONObject:
             )
         else:
             link_network = _check_link_network(network, path + "/network", error)
-        if link_network is not None:
             for side, node_id in ends:
-                address = device_addresses.get(node_id)
-                if address is not None and address[0] not in link_network:
+                ip_path = f"{path}/network/{side}_ip"
+                value = network.get(f"{side}_ip")
+                if value is None:
+                    if device_types[node_id].lower() not in LAYER2_TYPES:
+                        error(
+                            "missing_link_ip",
+                            ip_path,
+                            f"Provide the address {node_id!r} uses on this link.",
+                        )
+                    continue
+                ip = _parse_ipv4(value, ip_path, "invalid_link_ip", error)
+                if ip is None:
+                    continue
+                endpoint_ips.setdefault(node_id, set()).add(ip)
+                if link_network is not None and ip not in link_network:
                     error(
-                        "link_endpoint_subnet_mismatch",
-                        path + "/" + side,
-                        f"Device {node_id!r}'s address is not inside this link's network.",
+                        "link_ip_outside_network",
+                        ip_path,
+                        f"{node_id!r}'s address on this link is not inside the link's network.",
                     )
         if edge_ok:
             connected.update(node_id for _, node_id in ends)
@@ -321,6 +336,14 @@ def check_readiness(architecture: Any) -> JSONObject:
                 "too_many_links",
                 path,
                 f"Device {identifier!r} is a pc; a pc may have only one link.",
+            )
+        address = device_addresses.get(identifier)
+        used = endpoint_ips.get(identifier)
+        if address is not None and used and address[0] not in used:
+            error(
+                "device_ip_not_on_link",
+                path + "/network/ip_address",
+                f"Device {identifier!r}'s ip_address is not the address it uses on any link.",
             )
     return result()
 

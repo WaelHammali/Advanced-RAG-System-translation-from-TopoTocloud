@@ -17,12 +17,20 @@ a topology diagram, so the contract does not carry it.
 | `devices` | Nonempty list; each device has a unique `id`, a nonempty `name`, a nonempty `type` (such as `pc`, `router`, `server` or `switch`) and a `network` object. |
 | `devices[].network` | `ip_address`, `prefix_length` (0–32), `subnet_mask` and `network_address`. All four must be present and mutually consistent for every device except `switch`/`bridge`/`hub`, which may leave all four `null`. |
 | `links` | Nonempty list; each link has a unique `id`, a `source` and `target` (existing device `id`s, not names) and its own `network` object. |
-| `links[].network` | `network_address`, `prefix_length` and `subnet_mask`. Always required, and must be internally consistent and agree with the address of any non-switch device at either end. |
+| `links[].network` | `network_address`, `prefix_length`, `subnet_mask`, plus `source_ip` and `target_ip`: the address each end uses on this link. The three network fields are always required and internally consistent; each endpoint IP is required (except at a switch/bridge/hub end, which may be `null`) and must lie inside the link's network. |
 
-A device has no ports or interfaces of its own — its single `network` object
-(or `null`, for a switch/bridge/hub) is the only address it can carry, no
-matter how many links it has. A `pc` may have exactly one link; every other
-type may have any number.
+A device has no named ports or interfaces. Its own `network` object holds its
+main address; the address it uses on each link is that link's `source_ip` or
+`target_ip`. A router joining two subnets therefore has a different address on
+each link, and its own `ip_address` must be one of them. A `pc` may have
+exactly one link; every other type may have any number.
+
+```json
+{"id": "link_2", "source": "device_2", "target": "device_3",
+ "network": {"network_address": "10.0.12.0", "prefix_length": 30,
+             "subnet_mask": "255.255.255.252",
+             "source_ip": "10.0.12.1", "target_ip": "10.0.12.2"}}
+```
 
 See [validation](validation.md) for the exact required fields and rejection rules.
 Unknown extension fields are preserved unchanged; passing readiness does not
@@ -78,9 +86,9 @@ output paths cannot be the same. See the CLI exit statuses in the root README.
 ## Migration from the former combined-configuration contract
 
 There is no `components`/`edges`/`interfaces` layout, and no `routing`, `services`,
-`automation`, `os`, `cloud` or `schema_version` sections. A device's address lives
-directly on its `network` object, and per-link identity comes from the link's own
-`id`, not from a named interface. These old input fields have no equivalent in
+`automation`, `os`, `cloud` or `schema_version` sections. A device's main address lives
+on its `network` object, per-link addresses live on each link's `source_ip`/`target_ip`,
+and per-link identity comes from the link's own `id`, not from a named interface. These old input fields have no equivalent in
 this contract; a caller migrating from the former layout must convert to
 `devices`/`links` before calling this application. Historical code remains in
 Git history.

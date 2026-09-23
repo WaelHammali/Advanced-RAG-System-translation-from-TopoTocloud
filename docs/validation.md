@@ -40,16 +40,19 @@ application can show them to the user, complete the JSON and resubmit it.
   of `ip_address`/`prefix_length`. A `switch`/`bridge`/`hub` may leave all
   four fields `null`; an explicitly supplied address on one is still checked
   the same way.
-- A device carries at most one `network` object, used for every link it has —
-  there is no per-link address on the device side. A `pc` may have exactly
-  one link; any other type may have any number of links.
+- A `pc` may have exactly one link; any other type may have any number of links.
 - Every link has a unique, nonempty `id`, and `source`/`target` naming existing
   device `id`s (not display names). A link cannot connect a device to itself.
 - Every link has its own `network` object with `network_address`,
   `prefix_length` and `subnet_mask`, always required and internally
-  consistent the same way as a device's. The link's declared network must
-  also contain the address of any non-switch device at either end; a device
-  whose own address falls outside its link's network is rejected.
+  consistent the same way as a device's.
+- Every link's `network` also has `source_ip` and `target_ip`: the address
+  each end uses on that link. Each is required unless that end is a
+  switch/bridge/hub (then it may be `null`), must be a valid IPv4 address, and
+  must lie inside the link's network. A router joining two subnets uses a
+  different address on each link.
+- A device's own `ip_address` must be the address it uses on at least one of
+  its links (for a `pc`, its only link).
 - Every device has at least one valid link to a different device. A
   self-loop does not satisfy this requirement. A typo or dangling reference
   does not make an isolated device ready.
@@ -69,13 +72,12 @@ addresses across the whole topology (only within one connected group — see
 below), route feasibility, service readiness, implementation support or cloud
 limits.
 
-One consequence of the strict per-link consistency check: two devices in
-genuinely different subnets, cabled directly with no intermediate router, can
-no longer be represented as "ready but expected to fail to ping" the way an
-earlier, richer contract allowed — the link's single `network` object cannot
-honestly describe two disjoint subnets at once, and fabricating a covering
-block just to pass the gate would misrepresent the data. That case is now
-rejected at the gate instead.
+One consequence of the per-link check: two devices in genuinely different
+subnets, cabled directly with no router between them, are rejected. One cable
+is one network, so one end's address falls outside the link's network.
+Routers joining different subnets are fine: each of their links carries its
+own network and per-end addresses (see
+[router_chain_no_routes.json](../examples/edge_cases/router_chain_no_routes.json)).
 
 These limits are deliberate: passing readiness means the requested identity,
 addressing and link prerequisites are complete and self-consistent. It does

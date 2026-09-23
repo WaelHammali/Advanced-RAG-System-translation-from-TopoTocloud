@@ -21,14 +21,14 @@ def example(name):
     [
         ("single_pc", False),
         ("two_pcs_direct", True),
-        # A link has one network block; two devices in genuinely different
-        # subnets over one direct cable can no longer be expressed without an
-        # inconsistent or fabricated link network, so this is now rejected.
+        # A link has one network; PC2's address on it lies outside that network.
         ("two_pcs_different_subnets", False),
         ("two_pcs_31", True),
         ("two_pcs_32", True),
         ("separate_pairs", True),
         ("switch_loop", True),
+        # PC1-R1-R2-PC2 with no routes: routers use a different address per link.
+        ("router_chain_no_routes", True),
     ],
 )
 def test_topology_matrix(case, ready):

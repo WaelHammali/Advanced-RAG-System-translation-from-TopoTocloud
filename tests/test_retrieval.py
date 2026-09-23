@@ -87,6 +87,8 @@ def test_same_switch_input_retrieves_local_forwarding_knowledge(tmp_path):
                     "network_address": "192.168.8.0",
                     "prefix_length": 24,
                     "subnet_mask": "255.255.255.0",
+                    "source_ip": "192.168.8.10",
+                    "target_ip": None,
                 },
             },
             {
@@ -97,10 +99,15 @@ def test_same_switch_input_retrieves_local_forwarding_knowledge(tmp_path):
                     "network_address": "192.168.8.0",
                     "prefix_length": 24,
                     "subnet_mask": "255.255.255.0",
+                    "source_ip": "192.168.8.20",
+                    "target_ip": None,
                 },
             },
         ],
     }
+    from net2cloud.readiness import check_readiness
+
+    assert check_readiness(architecture)["ready"]
     records = KnowledgeRetriever(backend="lexical", index_dir=tmp_path).retrieve(architecture)
     assert {"L2-001", "EX-LAN"} & {r["rule_id"] for r in records}
 

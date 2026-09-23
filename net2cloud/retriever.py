@@ -118,15 +118,12 @@ def _configuration_queries(architecture: dict[str, Any]) -> list[str]:
         if "switch" in roles or "bridge" in roles:
             queries.append("switch chain bridge STP loop switching paths")
 
-    if isinstance(devices, list):
-        for device in devices:
-            if not isinstance(device, dict):
-                continue
-            network = device.get("network")
-            prefix = network.get("prefix_length") if isinstance(network, dict) else None
-            if prefix in (31, 32):
-                queries.append("point-to-point /31 /32 host route prefix")
-                break
+    # A /31 or /32 on either a device's own address or a link's network.
+    for item in [*(devices if isinstance(devices, list) else []), *(links if isinstance(links, list) else [])]:
+        network = item.get("network") if isinstance(item, dict) else None
+        if isinstance(network, dict) and network.get("prefix_length") in (31, 32):
+            queries.append("point-to-point /31 /32 host route prefix")
+            break
 
     if isinstance(devices, list) and isinstance(links, list):
         hosts = {

@@ -165,6 +165,8 @@ def test_switch_needs_no_address():
                     "network_address": "10.0.0.0",
                     "prefix_length": 24,
                     "subnet_mask": "255.255.255.0",
+                    "source_ip": "10.0.0.1",
+                    "target_ip": None,
                 },
             }
         ],
@@ -183,6 +185,8 @@ def test_pc_may_have_only_one_link(architecture):
                 "network_address": "192.168.1.0",
                 "prefix_length": 24,
                 "subnet_mask": "255.255.255.0",
+                "source_ip": "192.168.1.10",
+                "target_ip": "192.168.1.20",
             },
         }
     )
@@ -191,34 +195,54 @@ def test_pc_may_have_only_one_link(architecture):
     assert "too_many_links" in {e["code"] for e in report["errors"]}
 
 
-def test_router_or_server_may_have_several_links(architecture):
-    # R1 (device_3) already has one link; a second, same-subnet link to the
-    # (non-pc) server is fine. device_1 is a pc and is deliberately not reused
-    # here, since a pc is capped at one link.
+def test_router_or_server_may_join_a_second_subnet(architecture):
+    # R1 (device_3) is on 192.168.1.0/24 via link_2; a second link to the server
+    # on a different subnet uses a different per-link address on each end.
     architecture["links"].append(
         {
             "id": "extra",
             "source": "device_3",
             "target": "device_4",
             "network": {
-                "network_address": "192.168.1.0",
-                "prefix_length": 24,
-                "subnet_mask": "255.255.255.0",
+                "network_address": "10.9.9.0",
+                "prefix_length": 30,
+                "subnet_mask": "255.255.255.252",
+                "source_ip": "10.9.9.1",
+                "target_ip": "10.9.9.2",
             },
         }
     )
     assert check_readiness(architecture)["ready"]
 
 
-def test_link_network_must_agree_with_a_connected_devices_address(architecture):
-    architecture["links"][1]["network"] = {
-        "network_address": "172.16.0.0",
-        "prefix_length": 30,
-        "subnet_mask": "255.255.255.252",
-    }
+def test_router_chain_joining_three_subnets_is_ready():
+    architecture = json.loads(
+        (ROOT / "examples/edge_cases/router_chain_no_routes.json").read_text()
+    )
+    assert check_readiness(architecture)["ready"]
+
+
+def test_a_link_ip_must_be_inside_the_links_network(architecture):
+    architecture["links"][1]["network"].update(
+        network_address="172.16.0.0", prefix_length=30, subnet_mask="255.255.255.252"
+    )
     report = check_readiness(architecture)
     assert not report["ready"]
-    assert "link_endpoint_subnet_mismatch" in {e["code"] for e in report["errors"]}
+    assert "link_ip_outside_network" in {e["code"] for e in report["errors"]}
+
+
+def test_a_non_switch_end_needs_its_link_ip(architecture):
+    architecture["links"][1]["network"]["source_ip"] = None  # R1's end
+    report = check_readiness(architecture)
+    assert not report["ready"]
+    assert "missing_link_ip" in {e["code"] for e in report["errors"]}
+
+
+def test_a_devices_own_ip_must_be_used_on_one_of_its_links(architecture):
+    architecture["devices"][0]["network"]["ip_address"] = "192.168.1.99"
+    report = check_readiness(architecture)
+    assert not report["ready"]
+    assert "device_ip_not_on_link" in {e["code"] for e in report["errors"]}
 
 
 def test_subnet_mask_must_match_prefix_length(architecture):

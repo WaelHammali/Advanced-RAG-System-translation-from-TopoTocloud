@@ -4,19 +4,34 @@
       "id": "device_1",
       "type": "switch",
       "name": "SW1",
-      "network": {"ip_address": null, "prefix_length": null, "subnet_mask": null, "network_address": null}
+      "network": {
+        "ip_address": null,
+        "prefix_length": null,
+        "subnet_mask": null,
+        "network_address": null
+      }
     },
     {
       "id": "device_2",
       "type": "switch",
       "name": "SW2",
-      "network": {"ip_address": null, "prefix_length": null, "subnet_mask": null, "network_address": null}
+      "network": {
+        "ip_address": null,
+        "prefix_length": null,
+        "subnet_mask": null,
+        "network_address": null
+      }
     },
     {
       "id": "device_3",
       "type": "switch",
       "name": "SW3",
-      "network": {"ip_address": null, "prefix_length": null, "subnet_mask": null, "network_address": null}
+      "network": {
+        "ip_address": null,
+        "prefix_length": null,
+        "subnet_mask": null,
+        "network_address": null
+      }
     }
   ],
   "links": [
@@ -27,7 +42,9 @@
       "network": {
         "network_address": "192.168.100.0",
         "prefix_length": 24,
-        "subnet_mask": "255.255.255.0"
+        "subnet_mask": "255.255.255.0",
+        "source_ip": null,
+        "target_ip": null
       }
     },
     {
@@ -37,7 +54,9 @@
       "network": {
         "network_address": "192.168.100.0",
         "prefix_length": 24,
-        "subnet_mask": "255.255.255.0"
+        "subnet_mask": "255.255.255.0",
+        "source_ip": null,
+        "target_ip": null
       }
     },
     {
@@ -47,7 +66,9 @@
       "network": {
         "network_address": "192.168.100.0",
         "prefix_length": 24,
-        "subnet_mask": "255.255.255.0"
+        "subnet_mask": "255.255.255.0",
+        "source_ip": null,
+        "target_ip": null
       }
     }
   ]

@@ -115,6 +115,8 @@ def test_many_routers_do_not_override_model_plan(retrieval):
                     "network_address": "10.254.0.0",
                     "prefix_length": 24,
                     "subnet_mask": "255.255.255.0",
+                    "source_ip": left["network"]["ip_address"],
+                    "target_ip": right["network"]["ip_address"],
                 },
             }
         )
@@ -434,6 +436,7 @@ def test_configuration_is_inside_the_aws_plan(architecture, retrieval):
         "two_pcs_32",
         "separate_pairs",
         "switch_loop",
+        "router_chain_no_routes",
     ],
 )
 def test_edge_case_translation_preserves_the_source_graph(case, tmp_path):

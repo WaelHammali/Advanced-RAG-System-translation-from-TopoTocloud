@@ -64,7 +64,9 @@
       "network": {
         "network_address": "192.168.1.0",
         "prefix_length": 24,
-        "subnet_mask": "255.255.255.0"
+        "subnet_mask": "255.255.255.0",
+        "source_ip": "192.168.1.10",
+        "target_ip": null
       }
     },
     {
@@ -74,7 +76,9 @@
       "network": {
         "network_address": "192.168.1.0",
         "prefix_length": 24,
-        "subnet_mask": "255.255.255.0"
+        "subnet_mask": "255.255.255.0",
+        "source_ip": "192.168.1.1",
+        "target_ip": null
       }
     },
     {
@@ -84,7 +88,9 @@
       "network": {
         "network_address": "192.168.1.0",
         "prefix_length": 24,
-        "subnet_mask": "255.255.255.0"
+        "subnet_mask": "255.255.255.0",
+        "source_ip": "192.168.1.20",
+        "target_ip": null
       }
     },
     {
@@ -94,7 +100,9 @@
       "network": {
         "network_address": "192.168.1.0",
         "prefix_length": 24,
-        "subnet_mask": "255.255.255.0"
+        "subnet_mask": "255.255.255.0",
+        "source_ip": "192.168.1.11",
+        "target_ip": null
       }
     }
   ]

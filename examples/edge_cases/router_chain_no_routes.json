@@ -5,43 +5,43 @@
       "type": "pc",
       "name": "PC1",
       "network": {
-        "ip_address": "10.0.0.1",
+        "ip_address": "10.0.1.2",
         "prefix_length": 24,
         "subnet_mask": "255.255.255.0",
-        "network_address": "10.0.0.0"
+        "network_address": "10.0.1.0"
       }
     },
     {
       "id": "device_2",
-      "type": "pc",
-      "name": "PC2",
+      "type": "router",
+      "name": "R1",
       "network": {
-        "ip_address": "10.0.0.2",
+        "ip_address": "10.0.1.1",
         "prefix_length": 24,
         "subnet_mask": "255.255.255.0",
-        "network_address": "10.0.0.0"
+        "network_address": "10.0.1.0"
       }
     },
     {
       "id": "device_3",
-      "type": "pc",
-      "name": "PC3",
+      "type": "router",
+      "name": "R2",
       "network": {
-        "ip_address": "10.0.0.1",
+        "ip_address": "10.0.2.1",
         "prefix_length": 24,
         "subnet_mask": "255.255.255.0",
-        "network_address": "10.0.0.0"
+        "network_address": "10.0.2.0"
       }
     },
     {
       "id": "device_4",
       "type": "pc",
-      "name": "PC4",
+      "name": "PC2",
       "network": {
-        "ip_address": "10.0.0.2",
+        "ip_address": "10.0.2.2",
         "prefix_length": 24,
         "subnet_mask": "255.255.255.0",
-        "network_address": "10.0.0.0"
+        "network_address": "10.0.2.0"
       }
     }
   ],
@@ -51,23 +51,35 @@
       "source": "device_1",
       "target": "device_2",
       "network": {
-        "network_address": "10.0.0.0",
+        "network_address": "10.0.1.0",
         "prefix_length": 24,
         "subnet_mask": "255.255.255.0",
-        "source_ip": "10.0.0.1",
-        "target_ip": "10.0.0.2"
+        "source_ip": "10.0.1.2",
+        "target_ip": "10.0.1.1"
       }
     },
     {
       "id": "link_2",
+      "source": "device_2",
+      "target": "device_3",
+      "network": {
+        "network_address": "10.0.12.0",
+        "prefix_length": 30,
+        "subnet_mask": "255.255.255.252",
+        "source_ip": "10.0.12.1",
+        "target_ip": "10.0.12.2"
+      }
+    },
+    {
+      "id": "link_3",
       "source": "device_3",
       "target": "device_4",
       "network": {
-        "network_address": "10.0.0.0",
+        "network_address": "10.0.2.0",
         "prefix_length": 24,
         "subnet_mask": "255.255.255.0",
-        "source_ip": "10.0.0.1",
-        "target_ip": "10.0.0.2"
+        "source_ip": "10.0.2.1",
+        "target_ip": "10.0.2.2"
       }
     }
   ]

@@ -20,7 +20,8 @@ from .readiness import check_readiness
 Issue = tuple[str, str, str]  # (device, other device or "", message)
 
 _DEVICE_PATH = re.compile(r"^/devices/(\d+)")
-_LINK_PATH = re.compile(r"^/links/(\d+)(?:/(source|target))?")
+# Matches /links/N, /links/N/source and /links/N/network/source_ip (side captured).
+_LINK_PATH = re.compile(r"^/links/(\d+)(?:/(?:network/)?(source|target)(?:_ip)?\b)?")
 
 _DEVICE_MESSAGES = {
     "isolated_device": "not linked to any other device",
@@ -37,6 +38,13 @@ _DEVICE_MESSAGES = {
     "subnet_mask_mismatch": "subnet mask does not match the prefix length",
     "invalid_network_address": "invalid network address",
     "network_address_mismatch": "network address does not match the IP address and prefix",
+    "device_ip_not_on_link": "IP address is not the one it uses on any of its links",
+}
+# Link endpoint-address problems are reported against the device at that end.
+_ENDPOINT_MESSAGES = {
+    "missing_link_ip": "no IP address on link {link}",
+    "invalid_link_ip": "invalid IP address on link {link}",
+    "link_ip_outside_network": "IP address on link {link} is outside the link's network",
 }
 _LINK_MESSAGES = {
     "missing_link_id": "has no ID",
@@ -48,7 +56,6 @@ _LINK_MESSAGES = {
     "invalid_subnet_mask": "invalid subnet mask",
     "subnet_mask_mismatch": "subnet mask does not match the prefix length",
     "invalid_network_address": "invalid network address",
-    "link_endpoint_subnet_mismatch": "a connected device's address is outside this link's network",
     "self_link": "connects a device to itself",
 }
 
@@ -105,11 +112,11 @@ def _from_link_error(architecture: Any, match: re.Match[str], error: dict[str, s
     if code == "unknown_device" and side:
         link = _at(_items(architecture, "links"), index)
         return link_name, "", f"link {side} points to unknown device {link.get(side)!r}"
-    if code == "link_endpoint_subnet_mismatch" and side:
+    if code in _ENDPOINT_MESSAGES and side:
         link = _at(_items(architecture, "links"), index)
         device_name = _device_name_by_id(architecture, link.get(side))
         if device_name:
-            return device_name, "", _LINK_MESSAGES[code]
+            return device_name, "", _ENDPOINT_MESSAGES[code].format(link=link_name)
     return link_name, "", _LINK_MESSAGES.get(code) or f"{error['message']} ({error['path']})"
 
 
@@ -125,8 +132,15 @@ def _from_error(architecture: Any, error: dict[str, str]) -> Issue:
     return "", "", f"{error['message']} ({path})" if located else error["message"]
 
 
+def _address(value: Any) -> ipaddress.IPv4Address | None:
+    try:
+        return ipaddress.IPv4Address(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _address_conflicts(architecture: Any) -> list[Issue]:
-    """Two devices with the same IP inside one connected group."""
+    """Two devices using the same IP (own or on a link) inside one connected group."""
     parent: dict[str, str] = {}
 
     def find(node: str) -> str:
@@ -135,33 +149,37 @@ def _address_conflicts(architecture: Any) -> list[Issue]:
             node = parent[node]
         return node
 
-    links = _items(architecture, "links")
-    for link in links:
+    used: dict[str, set[ipaddress.IPv4Address]] = {}
+    for link in _items(architecture, "links"):
         if not isinstance(link, dict):
             continue
         source, target = link.get("source"), link.get("target")
         if _named(source) and _named(target):
             parent[find(source)] = find(target)
+        network = link.get("network")
+        if not isinstance(network, dict):
+            continue
+        for side in ("source", "target"):
+            node, address = link.get(side), _address(network.get(f"{side}_ip"))
+            if _named(node) and address is not None:
+                used.setdefault(node, set()).add(address)
 
     first_use: dict[tuple[str, ipaddress.IPv4Address], tuple[str, int]] = {}
     conflicts: list[Issue] = []
     for index, device in enumerate(_items(architecture, "devices")):
-        if not isinstance(device, dict):
+        if not isinstance(device, dict) or not _named(device.get("id")):
             continue
-        device_id = device.get("id")
-        if not _named(device_id):
-            continue
+        device_id = device["id"]
         network = device.get("network")
-        if not isinstance(network, dict):
-            continue
-        try:
-            address = ipaddress.IPv4Address(network.get("ip_address"))
-        except (TypeError, ValueError):
-            continue
+        addresses = set(used.get(device_id, set()))
+        own = _address(network.get("ip_address")) if isinstance(network, dict) else None
+        if own is not None:
+            addresses.add(own)
         name = _device_name(architecture, index)
-        owner = first_use.setdefault((find(device_id), address), (name, index))
-        if owner[1] != index:
-            conflicts.append((name, owner[0], f"same IP address as {owner[0]}"))
+        for address in sorted(addresses):
+            owner = first_use.setdefault((find(device_id), address), (name, index))
+            if owner[1] != index:
+                conflicts.append((name, owner[0], f"same IP address as {owner[0]}"))
     return conflicts
 
 

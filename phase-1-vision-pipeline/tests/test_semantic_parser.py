@@ -202,3 +202,38 @@ def test_axis_angle_from_polygon():
     )
     assert abs(p.axis_angle - 1.5707963) < 1e-3
     assert p.text_height == 20
+
+
+@pytest.mark.parametrize(
+    "text,kind,value",
+    [
+        ("Subnet:28.128.61.43/24", "ipv4_cidr", "28.128.61.43/24"),
+        ("Subnet: 28.128.61.43/24", "ipv4_cidr", "28.128.61.43/24"),
+        ("GW:144.255.150.97", "ipv4", "144.255.150.97"),
+        ("Gateway: 10.0.0.1", "ipv4", "10.0.0.1"),
+        ("Mask:255.255.255.0", "subnet_mask", "255.255.255.0"),
+        ("Supnet:105.168.177.171/24", "ipv4_cidr", "105.168.177.171/24"),  # OCR typo of "Subnet:"
+    ],
+)
+def test_a_leading_label_is_stripped_from_an_otherwise_complete_address(text, kind, value):
+    (p,) = parse(text)
+    assert p.semantic_type == kind and p.normalized_text == value
+    assert "label_prefix_stripped" in p.notes
+    assert p.raw_text == text
+    assert p.semantic_confidence < 1.0  # a repair lowers confidence, same as the other repairs
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "bnet:32.217.22",  # only 3 octets even after stripping - stays unresolved, not guessed
+        "GW:123105.14",  # not a valid dotted quad even after stripping
+        "R1:",  # the "label" looks like a device name - must not be eaten
+        "Router1: is the core",  # ditto, and the remainder isn't an address either
+        "10.0.0.1: something",  # does not start with a letter - not a label pattern at all
+    ],
+)
+def test_label_stripping_never_invents_an_address(text):
+    (p,) = parse(text)
+    assert p.semantic_type == "unknown"
+    assert "label_prefix_stripped" not in p.notes

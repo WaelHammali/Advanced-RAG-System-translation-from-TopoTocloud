@@ -110,24 +110,40 @@ def apply_corrections(architecture: Any, corrections: list, *, expected_revision
     links = updated.get("links")
     original_devices = architecture.get("devices", [])
     if isinstance(devices, list) and isinstance(links, list):
+        # Resolve simultaneous renames against the original graph. Sequential
+        # replacement would miswire links when two IDs are swapped.
+        renames = {}
+        for index, device in enumerate(devices):
+            original = original_devices[index]
+            if not isinstance(device, dict) or not isinstance(original, dict):
+                continue
+            old_id = original.get("id")
+            if (
+                f"/devices/{index}/id" in paths
+                and isinstance(old_id, str)
+                and old_id
+                and sum(isinstance(d, dict) and d.get("id") == old_id for d in original_devices)
+                == 1
+            ):
+                renames[old_id] = device.get("id")
+        for li, link in enumerate(links):
+            if not isinstance(link, dict):
+                continue
+            original = architecture["links"][li]
+            for side in ("source", "target"):
+                old_id = original.get(side) if isinstance(original, dict) else None
+                if (
+                    isinstance(old_id, str)
+                    and old_id in renames
+                    and f"/links/{li}/{side}" not in paths
+                ):
+                    link[side] = renames[old_id]
         for index, device in enumerate(devices):
             if not isinstance(device, dict) or index >= len(original_devices):
                 continue
             original = original_devices[index]
             if not isinstance(original, dict):
                 continue
-            id_path = f"/devices/{index}/id"
-            old_id = original.get("id")
-            if (
-                id_path in paths
-                and sum(isinstance(d, dict) and d.get("id") == old_id for d in original_devices)
-                == 1
-            ):
-                for li, link in enumerate(links):
-                    if isinstance(link, dict):
-                        for side in ("source", "target"):
-                            if link.get(side) == old_id and f"/links/{li}/{side}" not in paths:
-                                link[side] = device.get("id")
             ip_path = f"/devices/{index}/network/ip_address"
             if ip_path in paths and isinstance(device.get("network"), dict):
                 old_network = original.get("network")
@@ -176,7 +192,11 @@ def apply_corrections(architecture: Any, corrections: list, *, expected_revision
                     and main_path not in paths
                 ):
                     network["ip_address"] = value
-                    _derive_network(network, {"ip_address"})
+                    device_prefix = f"/devices/{di}/network/"
+                    explicit = {
+                        p[len(device_prefix) :] for p in paths if p.startswith(device_prefix)
+                    }
+                    _derive_network(network, {"ip_address", *explicit})
     for group in ("devices", "links"):
         items = updated.get(group, [])
         if not isinstance(items, list):

@@ -99,3 +99,26 @@ def test_graph_replacement_requires_full_revalidation(source):
     result = correct(source, [("", "/links", [])])
     assert not result["validation"]["ready"]
     assert any(e["code"] == "isolated_device" for e in result["validation"]["errors"])
+
+
+def test_simultaneous_id_swap_preserves_original_cable_ownership(source):
+    result = correct(
+        source,
+        [("device_1", "/devices/0/id", "device_5"), ("device_5", "/devices/4/id", "device_1")],
+    )
+    assert result["validation"]["ready"]
+    links = result["architecture"]["links"]
+    assert links[0]["source"] == "device_5"
+    assert links[3]["source"] == "device_1"
+
+
+def test_endpoint_edit_does_not_overwrite_an_explicit_bad_mask(source):
+    result = correct(
+        source,
+        [
+            ("link_1", "/links/0/network/source_ip", "192.168.1.99"),
+            ("device_1", "/devices/0/network/subnet_mask", "invalid"),
+        ],
+    )
+    assert result["architecture"]["devices"][0]["network"]["subnet_mask"] == "invalid"
+    assert not result["validation"]["ready"]

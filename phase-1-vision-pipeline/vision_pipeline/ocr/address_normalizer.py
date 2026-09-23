@@ -1,15 +1,21 @@
-"""IPv4 address normalisation and host-suffix arithmetic.
+"""IPv4 and IPv6 address normalisation and host-suffix arithmetic.
 
-Everything is exact integer arithmetic. Nothing is ever assumed: a value is either read from
-the text, derived deterministically from values that were read, or ``None``.
+Everything is exact arithmetic (integers for IPv4, the standard ``ipaddress`` module for
+IPv6). Nothing is ever assumed: a value is either read from the text, derived
+deterministically from values that were read, or ``None``.
 
 Normalised shape (all four fields nullable)::
 
     ip_address, prefix_length, subnet_mask, network_address
+
+IPv6 has no dotted mask: ``subnet_mask`` is always ``None`` for an IPv6 address (not
+applicable, not missing). IPv6 addresses are stored in their canonical compressed,
+lowercase form (``2001:DB8:0:0::1`` -> ``2001:db8::1``).
 """
 
 from __future__ import annotations
 
+import ipaddress
 import re
 from dataclasses import dataclass, field
 from typing import Any
@@ -18,6 +24,11 @@ _OCTET = r"(?:0|[1-9]\d{0,2})"  # no leading zeros: "01" is ambiguous (octal?) -
 _IPV4_RE = re.compile(rf"^({_OCTET})\.({_OCTET})\.({_OCTET})\.({_OCTET})$")
 _CIDR_RE = re.compile(rf"^({_OCTET})\.({_OCTET})\.({_OCTET})\.({_OCTET})/(\d{{1,2}})$")
 _SUFFIX_RE = re.compile(r"^\.(0|[1-9]\d{0,2})$")
+#: characters an IPv6 address may contain (hex groups, colons, an embedded dotted IPv4 tail)
+_IPV6_CHARS_RE = re.compile(r"^[0-9A-Fa-f:.]+$")
+_IPV6_CIDR_RE = re.compile(r"^([0-9A-Fa-f:.]+)/(0|[1-9]\d{0,2})$")
+#: IPv6 host suffix: "::2", "::1f" - the host part written alone next to a device
+_SUFFIX6_RE = re.compile(r"^::([0-9A-Fa-f]{1,4})$")
 
 
 # ------------------------------------------------------------------------ integer helpers
@@ -99,14 +110,20 @@ class NormalizedAddress:
         }
 
     @property
+    def version(self) -> int | None:
+        return ip_version(self.ip_address or self.network_address or "")
+
+    @property
     def is_network_form(self) -> bool:
-        """True when the value is a network (host bits all zero, prefix <= 30), not a host."""
-        return (
-            self.ip_address is not None
-            and self.prefix_length is not None
-            and self.prefix_length <= 30
-            and self.ip_address == self.network_address
-        )
+        """True when the value is a network (host bits all zero), not a host.
+
+        IPv4 up to /30 and IPv6 up to /126: in smaller blocks (/31, /32, /127, /128) the
+        all-zero address is itself a usable host, so it is not read as a network label.
+        """
+        if self.ip_address is None or self.prefix_length is None:
+            return False
+        limit = 126 if self.version == 6 else 30
+        return self.prefix_length <= limit and self.ip_address == self.network_address
 
 
 def normalize_cidr(text: str) -> NormalizedAddress | None:
@@ -179,6 +196,167 @@ def parse_host_suffix(text: str) -> int | None:
     return value if value <= 255 else None
 
 
+def parse_host_suffix6(text: str) -> int | None:
+    """``"::2"`` -> 2, ``"::1f"`` -> 31. ``None`` unless it is ``::`` + 1-4 hex digits, non-zero.
+
+    Written alone next to a device, ``::2`` is the host part of the prefix on its link - the
+    IPv6 form of the ``.2`` convention - not the full address ``::2``.
+    """
+    m = _SUFFIX6_RE.match(text)
+    if not m:
+        return None
+    value = int(m.group(1), 16)
+    return value or None
+
+
+def host_suffix_version(text: str | None) -> int | None:
+    """4 for ``.N``, 6 for ``::N``, ``None`` if ``text`` is not a host suffix."""
+    if text is None:
+        return None
+    if parse_host_suffix(text) is not None:
+        return 4
+    if parse_host_suffix6(text) is not None:
+        return 6
+    return None
+
+
+# --------------------------------------------------------------------------------- IPv6
+
+
+def ipv6_canonical(text: str) -> str | None:
+    """Strictly parse an IPv6 address; canonical compressed lowercase form, else ``None``.
+
+    Rejected: zone ids (``fe80::1%eth0`` - interface names are out of scope), anything but
+    hex digits / colons / an embedded dotted IPv4 tail, and the unspecified address ``::``.
+    """
+    if ":" not in text or not _IPV6_CHARS_RE.match(text):
+        return None
+    try:
+        addr = ipaddress.IPv6Address(text)
+    except ValueError:
+        return None
+    if addr.is_unspecified:
+        return None
+    return str(addr)
+
+
+def normalize_ipv6_only(text: str) -> NormalizedAddress | None:
+    ip = ipv6_canonical(text)
+    if ip is None:
+        return None
+    return NormalizedAddress(ip_address=ip, field_origin={"ip_address": "ocr"})
+
+
+def normalize_ipv6_cidr(text: str) -> NormalizedAddress | None:
+    """``2001:db8:1::5/64`` -> ip, prefix, network. ``subnet_mask`` is not used by IPv6."""
+    m = _IPV6_CIDR_RE.match(text)
+    if not m:
+        return None
+    prefix = int(m.group(2))
+    if prefix > 128:
+        return None
+    try:
+        addr = ipaddress.IPv6Address(m.group(1)) if ":" in m.group(1) else None
+    except ValueError:
+        return None
+    if addr is None:
+        return None
+    net = ipaddress.IPv6Network((addr, prefix), strict=False)
+    return NormalizedAddress(
+        ip_address=str(addr),
+        prefix_length=prefix,
+        network_address=str(net.network_address),
+        field_origin={
+            "ip_address": "ocr",
+            "prefix_length": "ocr",
+            "network_address": "derived_from_ip_and_prefix_length",
+        },
+    )
+
+
+# ------------------------------------------------------------ family-agnostic helpers
+
+
+def ip_version(text: str | None) -> int | None:
+    """4 or 6 for a valid address (strict IPv4, see :func:`ip_to_int`), else ``None``."""
+    if not isinstance(text, str):
+        return None
+    if ip_to_int(text) is not None:
+        return 4
+    if ":" in text and _IPV6_CHARS_RE.match(text):
+        try:
+            ipaddress.IPv6Address(text)
+            return 6
+        except ValueError:
+            return None
+    return None
+
+
+def canonical_ip(text: str | None) -> str | None:
+    """The address as it must be stored: strict IPv4 unchanged, IPv6 compressed lowercase."""
+    version = ip_version(text)
+    if version == 4:
+        return text
+    if version == 6:
+        return str(ipaddress.IPv6Address(text))
+    return None
+
+
+def max_prefix(version: int) -> int:
+    return 128 if version == 6 else 32
+
+
+def mask_for(prefix: int | None, version: int) -> str | None:
+    """Dotted mask for IPv4; ``None`` for IPv6, which does not use masks."""
+    if version == 6 or prefix is None:
+        return None
+    return prefix_to_mask(prefix)
+
+
+def network_of_any(ip: str, prefix: int) -> str | None:
+    version = ip_version(ip)
+    if (
+        version is None
+        or not isinstance(prefix, int)
+        or isinstance(prefix, bool)
+        or not 0 <= prefix <= max_prefix(version)
+    ):
+        return None
+    if version == 4:
+        return network_of(ip, prefix)
+    return str(
+        ipaddress.IPv6Network((ipaddress.IPv6Address(ip), prefix), strict=False).network_address
+    )
+
+
+def ip_in_network(ip: str, network_address: str, prefix: int) -> bool:
+    version = ip_version(ip)
+    return (
+        version is not None
+        and version == ip_version(network_address)
+        and network_of_any(ip, prefix) == canonical_ip(network_address)
+    )
+
+
+def parse_cidr_any(text: str) -> tuple[str, int | None, int] | None:
+    """``"ip"`` or ``"ip/prefix"`` (either family) -> (canonical ip, prefix or None, version)."""
+    if not isinstance(text, str):
+        return None
+    text = text.strip()
+    addr, _, prefix_text = text.partition("/")
+    version = ip_version(addr)
+    if version is None:
+        return None
+    prefix = None
+    if prefix_text:
+        if not re.fullmatch(r"0|[1-9]\d{0,2}", prefix_text) or int(prefix_text) > max_prefix(
+            version
+        ):
+            return None
+        prefix = int(prefix_text)
+    return canonical_ip(addr), prefix, version  # type: ignore[return-value]
+
+
 # -------------------------------------------------------------------- host-suffix resolver
 
 
@@ -206,10 +384,21 @@ def resolve_host_suffix(
 
     The candidate is built with integer arithmetic and then verified: it must lie inside the
     network and, for prefixes <= /30, must not be the network or broadcast address.
+
+    IPv6 (``2001:db8:1::/64`` + ``::2`` -> ``2001:db8:1::2/64``): the suffix is the host part
+    itself, so any prefix up to /127 works as long as the value fits in the host bits. A
+    suffix of one family never resolves against a network of the other.
     """
-    value = parse_host_suffix(suffix)
-    if value is None:
+    suffix_version, net_version = host_suffix_version(suffix), ip_version(network_address)
+    if suffix_version is None:
         return HostResolution(None, "invalid_host_suffix")
+    if net_version is None:
+        return HostResolution(None, "invalid_network")
+    if suffix_version != net_version:
+        return HostResolution(None, "suffix_family_mismatch")
+    if suffix_version == 6:
+        return _resolve_host_suffix6(network_address, prefix_length, suffix)
+    value = parse_host_suffix(suffix)
     net_int = ip_to_int(network_address)
     if net_int is None or not isinstance(prefix_length, int) or not 0 <= prefix_length <= 32:
         return HostResolution(None, "invalid_network")
@@ -236,6 +425,38 @@ def resolve_host_suffix(
                 "ip_address": "derived_from_host_suffix_and_link_network",
                 "prefix_length": "derived_from_link_network",
                 "subnet_mask": "derived_from_link_network",
+                "network_address": "derived_from_link_network",
+            },
+        ),
+        "resolved",
+    )
+
+
+def _resolve_host_suffix6(network_address: str, prefix_length: int, suffix: str) -> HostResolution:
+    if (
+        not isinstance(prefix_length, int)
+        or isinstance(prefix_length, bool)
+        or not 0 <= prefix_length <= 128
+    ):
+        return HostResolution(None, "invalid_network")
+    if prefix_length >= 128:
+        return HostResolution(None, "prefix_has_no_host_bits")
+    net = ipaddress.IPv6Address(network_address)
+    network = ipaddress.IPv6Network((net, prefix_length), strict=False)
+    if network.network_address != net:
+        return HostResolution(None, "network_address_has_host_bits")
+    value = parse_host_suffix6(suffix)
+    if value is None or value >= 2 ** (128 - prefix_length):
+        return HostResolution(None, "suffix_outside_network")
+    candidate = str(ipaddress.IPv6Address(int(net) | value))
+    return HostResolution(
+        NormalizedAddress(
+            ip_address=candidate,
+            prefix_length=prefix_length,
+            network_address=str(net),
+            field_origin={
+                "ip_address": "derived_from_host_suffix_and_link_network",
+                "prefix_length": "derived_from_link_network",
                 "network_address": "derived_from_link_network",
             },
         ),

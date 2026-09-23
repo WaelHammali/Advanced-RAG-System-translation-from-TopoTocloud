@@ -37,6 +37,8 @@ class SemanticConfidence:
     ipv4: float = 1.0
     ipv4_cidr: float = 1.0
     subnet_mask: float = 1.0
+    ipv6: float = 1.0
+    ipv6_cidr: float = 1.0
     host_suffix: float = 0.95
     device_name: float = 0.90
     #: multiplier when whitespace inside a dotted/slashed token had to be removed

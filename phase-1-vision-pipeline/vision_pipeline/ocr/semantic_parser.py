@@ -2,7 +2,7 @@
 
 Every OCR region becomes one (rarely several) :class:`ParsedText` with exactly one of::
 
-    device_name | ipv4 | ipv4_cidr | subnet_mask | host_suffix | unknown
+    device_name | ipv4 | ipv4_cidr | subnet_mask | ipv6 | ipv6_cidr | host_suffix | unknown
 
 Strategy, applied in this order to the whitespace-normalised text:
 
@@ -10,7 +10,10 @@ Strategy, applied in this order to the whitespace-normalised text:
 2. dotted quad     - strict IPv4; then *mathematically* tested for a contiguous mask:
                        contiguous (and not 0.0.0.0) -> ``subnet_mask`` (+ prefix length)
                        otherwise                    -> ``ipv4``
-3. ``host_suffix`` - ``.N`` with N in 0..255.
+3. ``host_suffix`` - ``.N`` with N in 0..255 (IPv4), or ``::N`` with N 1-4 hex digits (IPv6:
+                     the host part written alone next to a device, never the address ``::N``).
+3b. ``ipv6_cidr`` / ``ipv6`` - strict IPv6 (``2001:db8::1/64``, ``fe80::1``), stored in its
+                     canonical compressed lowercase form; zone ids and ``::`` are rejected.
 4. link/interface vocabulary ("Ethernet", "GigabitEthernet0/1", "Gi0/1", "Fa0/0", "Se0",
    "Vlan10", "Port-channel1", ...) is always ``unknown``, checked before ``device_name`` so
    it can never be mistaken for one. Interface names are explicitly out of scope for this
@@ -48,11 +51,24 @@ from .address_normalizer import (
     mask_to_prefix,
     normalize_cidr,
     normalize_ip_only,
+    normalize_ipv6_cidr,
+    normalize_ipv6_only,
     normalize_mask_only,
     parse_host_suffix,
+    parse_host_suffix6,
 )
 
-SEMANTIC_TYPES = ("device_name", "ipv4", "ipv4_cidr", "subnet_mask", "host_suffix", "unknown")
+SEMANTIC_TYPES = (
+    "device_name",
+    "ipv4",
+    "ipv4_cidr",
+    "subnet_mask",
+    "ipv6",
+    "ipv6_cidr",
+    "host_suffix",
+    "unknown",
+)
+ADDRESS_VALUE_TYPES = ("ipv4", "ipv4_cidr", "subnet_mask", "ipv6", "ipv6_cidr")
 
 DEFAULT_DEVICE_NAME_PATTERN = r"^[A-Za-z]{1,12}[-_]?\d{1,4}$"
 
@@ -75,6 +91,8 @@ _DOT_SLASH_WS = re.compile(r"\s*([./])\s*")
 #: read as data) provided the value alone is a complete, unambiguous address/mask/CIDR and the
 #: label itself is not something that could be a device name
 _LABEL_PREFIX_RE = re.compile(r"^([A-Za-z][A-Za-z0-9 _-]{0,20}):\s*(.+)$")
+#: labels that look like a device name (letters + digits) but only ever introduce an address
+_IP_LABEL_WORDS = {"ipv4", "ipv6", "ip4", "ip6", "inet", "inet4", "inet6"}
 
 
 @dataclass
@@ -106,19 +124,22 @@ class ParsedText:
     @property
     def is_network_form(self) -> bool:
         return (
-            self.semantic_type == "ipv4_cidr"
+            self.semantic_type in ("ipv4_cidr", "ipv6_cidr")
             and self.address is not None
             and self.address.is_network_form
         )
 
     @property
     def slot(self) -> str | None:
-        """Grouping slot: which part of a device label this text can be."""
+        """Grouping slot: which part of a device label this text can be (IPv6 has its own slot,
+        so a dual-stack label "R1 / 10.0.0.1/24 / 2001:db8::1/64" stays one group)."""
         return {
             "device_name": "device_name",
             "ipv4": "ip",
             "ipv4_cidr": "ip",
             "subnet_mask": "subnet_mask",
+            "ipv6": "ip6",
+            "ipv6_cidr": "ip6",
         }.get(self.semantic_type)
 
     def to_dict(self) -> dict[str, Any]:
@@ -177,6 +198,14 @@ class SemanticParser:
             return _Cls("ipv4", self.conf.ipv4, address=normalize_ip_only(text))
         if parse_host_suffix(text) is not None:
             return _Cls("host_suffix", self.conf.host_suffix, host_suffix=text)
+        if parse_host_suffix6(text) is not None:  # before full IPv6: "::2" is a suffix here
+            return _Cls("host_suffix", self.conf.host_suffix, host_suffix=text.lower())
+        cidr6 = normalize_ipv6_cidr(text)
+        if cidr6 is not None:
+            return _Cls("ipv6_cidr", self.conf.ipv6_cidr, address=cidr6)
+        ip6 = normalize_ipv6_only(text)
+        if ip6 is not None:
+            return _Cls("ipv6", self.conf.ipv6, address=ip6)
         if self._link_type_re.match(text):  # checked before device_name: never a device name
             return _Cls("unknown", None)
         if self._name_re.match(text):
@@ -203,7 +232,7 @@ class SemanticParser:
         repaired = _DOT_SLASH_WS.sub(r"\1", norm)
         if repaired != norm:
             r = self.classify_text(repaired)
-            if r.semantic_type in ("ipv4", "ipv4_cidr", "subnet_mask", "host_suffix"):
+            if r.semantic_type in (*ADDRESS_VALUE_TYPES, "host_suffix"):
                 r.confidence = (r.confidence or 0.0) * self.conf.whitespace_repaired_factor
                 return [
                     self._make(
@@ -240,11 +269,9 @@ class SemanticParser:
         if m:
             label, rest = m.group(1), m.group(2)
             rest_cls = self.classify_text(rest)
-            if rest_cls.semantic_type in (
-                "ipv4",
-                "ipv4_cidr",
-                "subnet_mask",
-            ) and not self._name_re.match(label):
+            if rest_cls.semantic_type in ADDRESS_VALUE_TYPES and (
+                label.lower() in _IP_LABEL_WORDS or not self._name_re.match(label)
+            ):
                 rest_cls.confidence = (
                     rest_cls.confidence or 0.0
                 ) * self.conf.label_prefix_stripped_factor

@@ -103,6 +103,14 @@ class OpenCVSettings:
     respect_device_barriers: bool = True
     barrier_margin_px: float = 6.0
     min_path_length_px: float = 30.0
+    #: a junction with 3+ branches is normally left unresolved ("branched", no endpoints). If
+    #: dropping one or more leaf spurs no longer than this fully resolves it into a clean
+    #: 2-ended chain, the spurs are dropped instead - they are almost always icon-detail noise
+    #: (an arrow or texture on a device YOLO missed) or a decoration crossing the cable, not a
+    #: real branch. 0 disables this. Only ever applied when it FULLY resolves the branching.
+    prune_spur_max_px: float = 45.0
+    #: confidence penalty applied to a chain recovered this way, since it needed a repair
+    spur_pruned_confidence_factor: float = 0.85
     # -- geometric confidence
     ink_sample_step_px: float = 3.0
     ink_dilate_px: int = 2

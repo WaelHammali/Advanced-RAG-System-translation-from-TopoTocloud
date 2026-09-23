@@ -87,9 +87,11 @@ class LinkDetector:
             join_dist=cfg.join_dist_px,
             barriers=barriers,
             min_path_length=cfg.min_path_length_px,
+            max_spur_px=cfg.prune_spur_max_px,
         )
         stats["paths"] = len(paths)
         stats["paths_dropped_too_short"] = dropped
+        stats["paths_recovered_from_spur_pruning"] = sum(1 for p in paths if p.pruned_spur_count)
 
         h, w = image.shape[:2]
         diag = math.hypot(w, h) * s
@@ -130,7 +132,11 @@ class LinkDetector:
             end=up(p.end),
             endpoints=[up(q) for q in p.endpoints],
             confidence=conf,
-            quality={**quality, "length_px": round(quality["length_px"] * inv, 2)},
+            quality={
+                **quality,
+                "length_px": round(quality["length_px"] * inv, 2),
+                "pruned_length_px": round(quality["pruned_length_px"] * inv, 2),
+            },
         )
 
 
@@ -192,10 +198,16 @@ def _quality(
         + cfg.weight_coverage * observed
         + cfg.weight_endpoints * endpoint_score
     )
+    if path.pruned_spur_count:
+        # this chain only exists because one or more short, junction-forming spurs (icon-detail
+        # noise) were discarded - be less confident about it than an already-clean chain
+        conf = clamp01(conf * cfg.spur_pruned_confidence_factor)
     return conf, {
         "ink_support": round(ink_support, 4),
         "observed_fraction": round(observed, 4),
         "length_score": round(length_score, 4),
         "endpoint_score": round(endpoint_score, 4),
         "length_px": length,
+        "pruned_spur_count": path.pruned_spur_count,
+        "pruned_length_px": round(path.pruned_length_px, 2),
     }

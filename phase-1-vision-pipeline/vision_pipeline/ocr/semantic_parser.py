@@ -21,9 +21,12 @@ Strategy, applied in this order to the whitespace-normalised text:
                      ``Server10``). Pattern is configurable.
 6. anything else   -> ``unknown`` (never forced).
 
-Two conservative repairs, both flagged in ``notes`` and both lowering the semantic
-confidence: (a) whitespace touching a ``.`` or ``/`` is removed ("192.168.1. 1"), and
-(b) an OCR region holding several tokens is split only if EVERY token classifies.
+Three conservative repairs, all flagged in ``notes`` and all lowering the semantic
+confidence: (a) whitespace touching a ``.`` or ``/`` is removed ("192.168.1. 1"), (b) an OCR
+region holding several tokens is split only if EVERY token classifies, and (c) a leading
+label ("Subnet:", "GW:", "Gateway:", an OCR typo of one of these, ...) is stripped when what
+follows it, on its own, is a complete and unambiguous address, mask or CIDR - never when the
+label itself looks like a device name ("R1:" is left alone).
 
 The original OCR string is always kept in ``raw_text``.
 """
@@ -67,6 +70,11 @@ DEFAULT_LINK_TYPE_PATTERN = (
 )
 
 _DOT_SLASH_WS = re.compile(r"\s*([./])\s*")
+
+#: "<label>:<value>" with or without a space after the colon - the label is discarded (never
+#: read as data) provided the value alone is a complete, unambiguous address/mask/CIDR and the
+#: label itself is not something that could be a device name
+_LABEL_PREFIX_RE = re.compile(r"^([A-Za-z][A-Za-z0-9 _-]{0,20}):\s*(.+)$")
 
 
 @dataclass
@@ -227,6 +235,24 @@ class SemanticParser:
                         )
                     )
                 return out
+
+        m = _LABEL_PREFIX_RE.match(norm)
+        if m:
+            label, rest = m.group(1), m.group(2)
+            rest_cls = self.classify_text(rest)
+            if rest_cls.semantic_type in (
+                "ipv4",
+                "ipv4_cidr",
+                "subnet_mask",
+            ) and not self._name_re.match(label):
+                rest_cls.confidence = (
+                    rest_cls.confidence or 0.0
+                ) * self.conf.label_prefix_stripped_factor
+                return [
+                    self._make(
+                        item.id, rest, rest_cls, item.bbox, notes=["label_prefix_stripped"], **base
+                    )
+                ]
 
         notes = ["ignored_link_type_or_interface_term"] if self.is_ignored_link_type(norm) else []
         return [self._make(item.id, norm, direct, item.bbox, notes=notes, **base)]

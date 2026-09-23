@@ -43,6 +43,9 @@ class SemanticConfidence:
     whitespace_repaired_factor: float = 0.90
     #: multiplier when one OCR region held several tokens and was split
     split_token_factor: float = 0.90
+    #: multiplier when a leading, unclassifiable label ("Subnet:", "GW:", "Gateway:", a typo of
+    #: one of these, ...) had to be stripped before the address behind it would classify
+    label_prefix_stripped_factor: float = 0.85
 
 
 # ------------------------------------------------------------------------------ grouping

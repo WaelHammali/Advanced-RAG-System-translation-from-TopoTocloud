@@ -33,6 +33,11 @@ class PathCandidate:
     start: Point | None
     end: Point | None
     endpoints: list[Point] = field(default_factory=list)
+    #: a component that would otherwise be "branched" was recovered as a clean chain by
+    #: dropping this many short leaf spurs (icon-detail noise, e.g. an arrow drawn on a device
+    #: that YOLO missed) - only ever done when it fully resolves the branching, never partially
+    pruned_spur_count: int = 0
+    pruned_length_px: float = 0.0
 
     @property
     def length(self) -> float:
@@ -65,6 +70,7 @@ def reconstruct_paths(
     join_dist: float,
     barriers: Sequence[Rect] = (),
     min_path_length: float = 0.0,
+    max_spur_px: float = 0.0,
 ) -> tuple[list[PathCandidate], int]:
     """Returns ``(paths, number_of_paths_dropped_for_being_too_short)``."""
     segs = [s for s in segments if seg_length(s) > 0]
@@ -169,12 +175,66 @@ def reconstruct_paths(
                     if not seen[nb]:
                         seen[nb] = True
                         stack.append(nb)
-        cand = _build_candidate(sorted(comp), pieces, node_of, node_pos, adj)
+        cand = _build_candidate(sorted(comp), pieces, node_of, node_pos, adj, max_spur_px)
         if cand.length < min_path_length:
             dropped += 1
         else:
             out.append(cand)
     return out, dropped
+
+
+def _degrees(
+    members: set[int], pieces: list[tuple[int, int]], node_of: list[int]
+) -> dict[int, int]:
+    deg: dict[int, int] = {}
+    for pi in members:
+        a, b = node_of[pieces[pi][0]], node_of[pieces[pi][1]]
+        deg[a] = deg.get(a, 0) + 1
+        deg[b] = deg.get(b, 0) + 1
+    return deg
+
+
+def _prune_short_spurs(
+    comp: list[int],
+    pieces: list[tuple[int, int]],
+    node_of: list[int],
+    node_pos: dict[int, Point],
+    max_spur_px: float,
+) -> tuple[list[int], int, float] | None:
+    """If dropping one or more short leaf pieces (icon-detail noise - e.g. an arrow drawn on a
+    device YOLO missed, or a decorative shape crossing the cable) fully resolves a branched
+    component into a clean 2-leaf chain, return the reduced membership plus how much was
+    removed. Returns ``None`` if pruning does not FULLY resolve the branching - a partial,
+    still-ambiguous result is never returned; nothing is guessed."""
+    if max_spur_px <= 0:
+        return None
+    members = set(comp)
+    removed_count, removed_len = 0, 0.0
+    while True:
+        deg = _degrees(members, pieces, node_of)
+        # keep going while an actual branch point (degree >= 3) remains to resolve - a lone
+        # leaf on an otherwise-cyclic component (e.g. a spur off a loop) must still be tried
+        if len(members) < 2 or not any(d >= 3 for d in deg.values()):
+            break
+        shortest: tuple[int, float] | None = None
+        for pi in members:
+            a, b = node_of[pieces[pi][0]], node_of[pieces[pi][1]]
+            if deg.get(a) == 1 or deg.get(b) == 1:
+                length = dist(node_pos[a], node_pos[b])
+                if length <= max_spur_px and (shortest is None or length < shortest[1]):
+                    shortest = (pi, length)
+        if shortest is None:
+            break
+        pi, length = shortest
+        members.discard(pi)
+        removed_count += 1
+        removed_len += length
+    if removed_count == 0 or not members:
+        return None
+    deg = _degrees(members, pieces, node_of)
+    if sum(1 for d in deg.values() if d == 1) == 2 and all(d <= 2 for d in deg.values()):
+        return sorted(members), removed_count, removed_len
+    return None  # still branched (or collapsed to a cycle) after pruning - leave it alone
 
 
 def _build_candidate(
@@ -183,14 +243,19 @@ def _build_candidate(
     node_of: list[int],
     node_pos: dict[int, Point],
     adj: dict[int, list[int]],
+    max_spur_px: float = 0.0,
 ) -> PathCandidate:
+    pruned_count, pruned_len = 0, 0.0
+    deg = _degrees(set(comp), pieces, node_of)
+    if any(d >= 3 for d in deg.values()):
+        recovered = _prune_short_spurs(comp, pieces, node_of, node_pos, max_spur_px)
+        if recovered is not None:
+            comp, pruned_count, pruned_len = recovered
+            deg = _degrees(set(comp), pieces, node_of)
+
     members = set(comp)
     edges = [(node_of[pieces[pi][0]], node_of[pieces[pi][1]]) for pi in comp]
     segs = [(node_pos[a], node_pos[b]) for a, b in edges]
-    deg: dict[int, int] = {}
-    for a, b in edges:
-        deg[a] = deg.get(a, 0) + 1
-        deg[b] = deg.get(b, 0) + 1
     nodes = set(deg)
     leaves = sorted(
         (n for n in nodes if deg[n] == 1), key=lambda n: (node_pos[n][0], node_pos[n][1])
@@ -219,7 +284,14 @@ def _build_candidate(
     poly = [node_pos[n] for n in order]
     ptype = "single" if len(comp) == 1 else "chain"
     return PathCandidate(
-        list(zip(poly[:-1], poly[1:])), poly, ptype, poly[0], poly[-1], [poly[0], poly[-1]]
+        list(zip(poly[:-1], poly[1:])),
+        poly,
+        ptype,
+        poly[0],
+        poly[-1],
+        [poly[0], poly[-1]],
+        pruned_spur_count=pruned_count,
+        pruned_length_px=pruned_len,
     )
 
 

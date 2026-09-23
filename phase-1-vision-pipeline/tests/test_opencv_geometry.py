@@ -95,6 +95,68 @@ def test_short_paths_are_dropped_and_counted():
     assert paths == [] and dropped == 1
 
 
+# ------------------------------------------------------------------ short-spur pruning
+
+
+def test_short_spur_is_pruned_and_the_real_cable_recovered():
+    # a real cable crossed by a short (30px) spur - e.g. an arrow drawn on a device icon that
+    # YOLO missed, or a decoration crossing the cable - must not be discarded as "branched"
+    cable = [((0, 0), (600, 0))]
+    spur = [((300, 0), (300, -30))]
+    (p,), _ = reconstruct_paths(cable + spur, join_dist=5, max_spur_px=45)
+    assert p.path_type == "chain" and p.start == (0.0, 0.0) and p.end == (600.0, 0.0)
+    assert p.pruned_spur_count == 1 and p.pruned_length_px == 30.0
+
+
+def test_spur_pruning_disabled_by_default_leaves_it_branched():
+    cable = [((0, 0), (600, 0))]
+    spur = [((300, 0), (300, -30))]
+    (p,), _ = reconstruct_paths(cable + spur, join_dist=5)  # max_spur_px defaults to 0
+    assert p.path_type == "branched" and p.pruned_spur_count == 0
+
+
+def test_a_genuine_long_branch_is_never_pruned():
+    # a real 3-way junction (a hub/splitter actually drawn in the diagram) must stay branched,
+    # never resolved by discarding one of its real arms
+    cable = [((0, 0), (600, 0))]
+    real_branch = [((300, 0), (300, -200))]
+    (p,), _ = reconstruct_paths(cable + real_branch, join_dist=5, max_spur_px=45)
+    assert p.path_type == "branched" and p.pruned_spur_count == 0
+
+
+def test_two_short_spurs_on_the_same_cable_are_both_prunable():
+    cable = [((0, 0), (600, 0))]
+    spurs = [((290, 0), (290, -25)), ((310, 0), (310, 25))]
+    (p,), _ = reconstruct_paths(cable + spurs, join_dist=5, max_spur_px=45)
+    assert p.path_type == "chain" and p.start == (0.0, 0.0) and p.end == (600.0, 0.0)
+    assert p.pruned_spur_count == 2
+
+
+def test_pruning_that_does_not_fully_resolve_the_branch_is_abandoned():
+    # one short, prunable spur plus one genuinely long branch (at a different point on the
+    # cable): pruning the short spur alone still leaves 3 leaves (the long branch is still a
+    # real junction) - nothing may be guessed, so the ENTIRE pruning attempt is abandoned and
+    # the original, unpruned structure is reported
+    cable = [((0, 0), (600, 0))]
+    short_spur = [((290, 0), (290, -25))]
+    long_branch = [((310, 0), (310, 200))]
+    (p,), _ = reconstruct_paths(cable + short_spur + long_branch, join_dist=5, max_spur_px=45)
+    assert p.path_type == "branched" and p.pruned_spur_count == 0
+    assert len(p.endpoints) == 4
+
+
+def test_pruning_a_short_cycle_spur_does_not_fabricate_a_chain():
+    # a closed loop with a short dangling spur: removing the spur would leave a pure cycle (0
+    # leaves), not a 2-leaf chain, so the whole pruning attempt is abandoned - never invent a
+    # start/end on a loop
+    sq = [((0, 0), (100, 0)), ((100, 0), (100, 100)), ((100, 100), (0, 100)), ((0, 100), (0, 0))]
+    spur = [((0, 0), (-30, 0))]
+    (p,), _ = reconstruct_paths(sq + spur, join_dist=5, max_spur_px=45)
+    assert (
+        p.path_type == "branched" and p.start is None and p.end is None and p.pruned_spur_count == 0
+    )
+
+
 # ---------------------------------------------------------------------------- geometry
 
 

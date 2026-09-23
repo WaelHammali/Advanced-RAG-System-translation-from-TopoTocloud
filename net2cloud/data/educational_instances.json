@@ -1,0 +1,19 @@
+{
+  "profile": "educational_shared_worker_v1",
+  "region": "us-east-1",
+  "architecture": "x86_64",
+  "operating_system": "Linux/Unix",
+  "purchase_option": "on_demand",
+  "currency": "USD",
+  "reviewed_on": "2026-09-23",
+  "source": "https://aws.amazon.com/ec2/instance-types/t3/",
+  "max_hourly_compute_usd": "0.0400",
+  "offers": [
+    {"instance_type": "t3a.micro", "memory_mib": 1024, "vcpus": 2, "hourly_compute_usd": "0.0094"},
+    {"instance_type": "t3.micro", "memory_mib": 1024, "vcpus": 2, "hourly_compute_usd": "0.0104"},
+    {"instance_type": "t3a.small", "memory_mib": 2048, "vcpus": 2, "hourly_compute_usd": "0.0188"},
+    {"instance_type": "t3.small", "memory_mib": 2048, "vcpus": 2, "hourly_compute_usd": "0.0209"},
+    {"instance_type": "t3a.medium", "memory_mib": 4096, "vcpus": 2, "hourly_compute_usd": "0.0376"},
+    {"instance_type": "t3.medium", "memory_mib": 4096, "vcpus": 2, "hourly_compute_usd": "0.0418"}
+  ]
+}

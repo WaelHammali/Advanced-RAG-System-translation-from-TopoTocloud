@@ -12,10 +12,19 @@ import pytest
 
 from net2cloud import app, planner
 from net2cloud.config import CORE_RULE_IDS
+from net2cloud.plan_contract import required_cloud_plan, validate_cloud_plan
 from net2cloud.planner import plan_with_rag
 from net2cloud.retriever import KnowledgeRetriever
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def valid_response(architecture, rules=None):
+    return {
+        "cloud_plan": required_cloud_plan(architecture),
+        "rule_ids": rules if rules is not None else ["CORE-001"],
+        "limitations": [],
+    }
 
 
 class ModelClient:
@@ -50,17 +59,8 @@ def retrieval(tmp_path):
 def test_mixed_configuration_reaches_model_and_input_remains_unchanged(architecture, retrieval):
     architecture["custom"] = {"unicode": "réseau", "values": [False, None, 0]}
     before = deepcopy(architecture)
-    model_plan = {
-        "cloud_plan": {
-            "provider": "aws",
-            "custom_mapping": "keep",
-        },
-        "limitations": [],
-        "rule_ids": ["MAP-001", "L2-003"],
-        # These model-authored values must never replace authoritative inputs.
-        "architecture": {"invented": True},
-        "knowledge": [],
-    }
+    model_plan = valid_response(architecture, ["MAP-001", "L2-003"])
+    model_plan.update(architecture={"invented": True}, knowledge=[])
     client = ModelClient(json.dumps(model_plan))
     output = app.plan_architecture(architecture, client=client, retriever=retrieval)
     assert architecture == before == output["architecture"]
@@ -78,7 +78,7 @@ def test_mixed_configuration_reaches_model_and_input_remains_unchanged(architect
 
 def test_arbitrary_extra_fields_are_preserved_on_ready_input(architecture, retrieval):
     architecture["custom_device_format"] = {"strange_field": "kept"}
-    client = ModelClient('{"cloud_plan": {"provider": "aws"}, "rule_ids": [], "limitations": []}')
+    client = ModelClient(json.dumps(valid_response(architecture)))
     output = app.plan_architecture(architecture, client=client, retriever=retrieval)
     assert output["architecture"] == architecture
     assert len(client.calls) == 1
@@ -120,11 +120,7 @@ def test_many_routers_do_not_override_model_plan(retrieval):
                 },
             }
         )
-    expected = {
-        "cloud_plan": {"provider": "aws", "networking": {"links": []}},
-        "rule_ids": [],
-        "limitations": [],
-    }
+    expected = valid_response(architecture)
     output = app.plan_architecture(
         architecture, client=ModelClient(json.dumps(expected)), retriever=retrieval
     )
@@ -201,10 +197,10 @@ def test_cli_context_is_json_and_requires_no_client(tmp_path, monkeypatch, capsy
     assert "MAP-001" in {r["rule_id"] for r in json.loads(captured.out)["knowledge"]}
 
 
-def test_cli_plan_writes_only_json_artifact(tmp_path, monkeypatch, capsys):
+def test_cli_plan_writes_only_json_artifact(tmp_path, monkeypatch, capsys, architecture):
     import sys
 
-    client = ModelClient('{"cloud_plan": {"provider": "aws"}, "rule_ids": [], "limitations": []}')
+    client = ModelClient(json.dumps(valid_response(architecture)))
 
     def make_client(**options):
         assert options == {"max_retries": 0}
@@ -292,11 +288,19 @@ def test_falsey_injected_retriever_is_still_used(architecture):
             return False
 
         def retrieve(self, architecture):
-            return []
+            return [
+                {
+                    "rule_id": "CORE-001",
+                    "source": "injected",
+                    "heading": "core",
+                    "text": "preserve",
+                    "mode": "all",
+                }
+            ]
 
-    client = ModelClient('{"cloud_plan": {"provider": "aws"}, "rule_ids": [], "limitations": []}')
+    client = ModelClient(json.dumps(valid_response(architecture)))
     result = app.plan_architecture(architecture, retriever=InjectedRetriever(), client=client)
-    assert result["knowledge"] == []
+    assert result["knowledge"][0]["source"] == "injected"
 
 
 def test_cli_context_runs_outside_checkout_without_optional_dependencies(tmp_path):
@@ -335,8 +339,11 @@ def test_cli_context_runs_outside_checkout_without_optional_dependencies(tmp_pat
 @pytest.mark.parametrize("model", ["openai/gpt-oss-120b", "openai/gpt-oss-20b"])
 def test_gpt_oss_request_preserves_input_and_bounds_completion(model, architecture, monkeypatch):
     monkeypatch.setattr(planner, "PLAN_MODEL", model)
-    client = ModelClient('{"cloud_plan": {"provider": "aws"}, "rule_ids": [], "limitations": []}')
-    plan_with_rag(architecture, [], client=client)
+    client = ModelClient(json.dumps(valid_response(architecture)))
+    records = [
+        {"rule_id": "CORE-001", "source": "test", "heading": "test", "text": "test", "mode": "all"}
+    ]
+    plan_with_rag(architecture, records, client=client)
     (request,) = client.calls
     assert request["model"] == model
     assert request["max_completion_tokens"] == 4096
@@ -344,7 +351,9 @@ def test_gpt_oss_request_preserves_input_and_bounds_completion(model, architectu
     assert request["include_reasoning"] is False
     assert "reasoning_format" not in request
     content = request["messages"][1]["content"]
-    assert json.loads(content) == {"architecture": architecture, "knowledge": []}
+    supplied = json.loads(content)
+    assert supplied["architecture"] == architecture
+    assert supplied["required_cloud_plan"] == required_cloud_plan(architecture)
     assert "\n" not in content
 
 
@@ -413,18 +422,14 @@ def test_deployment_sections_cannot_reenter_the_output(section, architecture):
         plan_with_rag(architecture, [], client=ModelClient(json.dumps(response)))
 
 
-def test_configuration_is_inside_the_aws_plan(architecture, retrieval):
-    configuration = {"targets": [{"device_id": "device_4", "resource_ref": "lab_worker"}]}
-    response = {
-        "cloud_plan": {"provider": "aws", "configuration": configuration},
-        "rule_ids": ["MAP-001"],
-        "limitations": [],
-    }
+def test_later_configuration_targets_match_all_source_devices(architecture, retrieval):
+    response = valid_response(architecture)
     output = app.plan_architecture(
         architecture, client=ModelClient(json.dumps(response)), retriever=retrieval
     )
-    assert set(output) == {"cloud_plan", "architecture", "knowledge", "rule_ids", "limitations"}
-    assert output["cloud_plan"]["configuration"] == configuration
+    targets = output["cloud_plan"]["configuration_targets"]
+    assert {t["device_id"] for t in targets} == {d["id"] for d in architecture["devices"]}
+    assert output["cloud_plan"]["initial_configuration"]["routing_protocols"] == []
     assert output["architecture"] == architecture
 
 
@@ -441,11 +446,7 @@ def test_configuration_is_inside_the_aws_plan(architecture, retrieval):
 )
 def test_edge_case_translation_preserves_the_source_graph(case, tmp_path):
     architecture = json.loads((ROOT / "examples/edge_cases" / (case + ".json")).read_text())
-    response = {
-        "cloud_plan": {"provider": "aws", "networking": {"links": architecture["links"]}},
-        "rule_ids": [],
-        "limitations": ["Unverified illustrative plan"],
-    }
+    response = valid_response(architecture)
     before = deepcopy(architecture)
     result = app.plan_architecture(
         architecture,
@@ -453,7 +454,10 @@ def test_edge_case_translation_preserves_the_source_graph(case, tmp_path):
         retriever=KnowledgeRetriever(backend="lexical", index_dir=tmp_path),
     )
     assert result["architecture"] == architecture == before
-    assert result["cloud_plan"]["networking"]["links"] == before["links"]
+    validate_cloud_plan(result["cloud_plan"], before)
+    assert [link["link_id"] for link in result["cloud_plan"]["networking"]["links"]] == [
+        link["id"] for link in before["links"]
+    ]
 
 
 def test_package_cli_and_compatibility_launcher_agree_without_dependencies():

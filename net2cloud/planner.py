@@ -7,6 +7,7 @@ from typing import Any
 from .config import PLAN_MAX_COMPLETION_TOKENS, PLAN_MODEL, ROOT_DIR, SUPPORTED_PLAN_MODELS
 from .contracts import JSONObject, KnowledgeRecord
 from .json_io import dumps_json, loads_json
+from .plan_contract import required_cloud_plan, required_limitations, validate_cloud_plan
 from .readiness import require_ready
 
 SYSTEM_PROMPT = (ROOT_DIR / "net2cloud" / "prompts" / "planner.txt").read_text(encoding="utf-8")
@@ -77,6 +78,7 @@ def plan_with_rag(
 ) -> JSONObject:
     """Translate a ready architecture without dialogue or topology overrides."""
     require_ready(architecture)
+    required_plan = required_cloud_plan(architecture)
     if PLAN_MODEL not in SUPPORTED_PLAN_MODELS:
         raise ValueError(
             "NET2TF_PLAN_MODEL must be one of "
@@ -109,7 +111,13 @@ def plan_with_rag(
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {
                     "role": "user",
-                    "content": dumps_json({"architecture": architecture, "knowledge": context}),
+                    "content": dumps_json(
+                        {
+                            "architecture": architecture,
+                            "knowledge": context,
+                            "required_cloud_plan": required_plan,
+                        }
+                    ),
                 },
             ],
         )
@@ -132,4 +140,10 @@ def plan_with_rag(
         raise PlanResponseError(
             "Model cited rules outside the supplied context: " + ", ".join(sorted(unknown_rules))
         )
+    if not plan["rule_ids"]:
+        raise PlanResponseError("The plan must cite at least one retrieved rule.")
+    validate_cloud_plan(plan["cloud_plan"], architecture, expected=required_plan)
+    plan["limitations"] = list(
+        dict.fromkeys([*required_limitations(architecture), *plan["limitations"]])
+    )
     return plan

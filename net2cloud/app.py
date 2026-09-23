@@ -11,6 +11,7 @@ from typing import Any
 from .config import RETRIEVAL_BACKEND, TOP_K
 from .contracts import JSONObject, Retriever
 from .corrections import apply_corrections
+from .hosting import select_hosting
 from .json_io import dumps_json, loads_json, write_json
 from .planner import plan_with_rag
 from .readiness import ArchitectureNotReady, check_readiness, require_ready
@@ -25,6 +26,7 @@ def plan_architecture(
 ) -> JSONObject:
     """Block incomplete architectures, then translate without altering their fields."""
     require_ready(architecture)
+    select_hosting(architecture)  # Stop unsupported profiles before model retrieval/downloads.
     original = deepcopy(architecture)
     engine = retriever if retriever is not None else KnowledgeRetriever()
     knowledge = engine.retrieve(deepcopy(original))

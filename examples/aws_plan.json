@@ -1,72 +1,196 @@
 {
   "cloud_plan": {
+    "contract_version": "1.0",
     "provider": "aws",
+    "translation_mode": "behavioral_lab",
+    "hosting": {
+      "profile": "educational_shared_worker_v1",
+      "region": "us-east-1",
+      "architecture": "x86_64",
+      "instance_count": 1,
+      "instance_type": "t3a.micro",
+      "memory_mib": 1024,
+      "reserved_memory_mib": 768,
+      "cpu_credits": "standard",
+      "root_volume": {
+        "type": "gp3",
+        "size_gib": 8,
+        "encrypted": true
+      },
+      "public_ipv4": false,
+      "cost": {
+        "currency": "USD",
+        "hourly_compute_estimate": "0.0094",
+        "hourly_compute_cap": "0.0400",
+        "basis": "lowest_fitting_offer_in_reviewed_catalog",
+        "reviewed_on": "2026-09-23",
+        "source": "https://aws.amazon.com/ec2/instance-types/t3/",
+        "recheck_before_deployment": true,
+        "excludes": [
+          "storage",
+          "network",
+          "management_access",
+          "taxes"
+        ]
+      }
+    },
     "resources": [
       {
+        "id": "lab_vpc",
+        "type": "aws_vpc",
+        "cidr_ref": "deployment.transport_vpc_cidr"
+      },
+      {
+        "id": "lab_subnet",
+        "type": "aws_subnet",
+        "vpc_ref": "lab_vpc",
+        "cidr_ref": "deployment.transport_subnet_cidr",
+        "public_ipv4": false
+      },
+      {
+        "id": "worker_security",
+        "type": "aws_security_group",
+        "vpc_ref": "lab_vpc",
+        "ingress": [],
+        "egress": []
+      },
+      {
         "id": "lab_worker",
-        "type": "ec2.instance",
-        "purpose": "Host isolated educational network stacks",
-        "capacity": "requires workload sizing"
+        "type": "aws_instance",
+        "instance_type": "t3a.micro",
+        "subnet_ref": "lab_subnet",
+        "security_group_refs": [
+          "worker_security"
+        ],
+        "image_ref": "deployment.linux_ami_x86_64",
+        "public_ipv4": false,
+        "cpu_credits": "standard",
+        "root_volume": {
+          "type": "gp3",
+          "size_gib": 8,
+          "encrypted": true
+        }
       }
     ],
     "device_mapping": [
       {
         "device_id": "device_1",
-        "role": "pc",
-        "cloud_representation": "isolated_network_namespace",
-        "resource_ref": "lab_worker",
-        "configuration": {
-          "source_device_id": "device_1"
+        "name": "PC1",
+        "type": "pc",
+        "network": {
+          "ip_address": "10.0.0.1",
+          "prefix_length": 24,
+          "subnet_mask": "255.255.255.0",
+          "network_address": "10.0.0.0"
         },
-        "rule_ids": [
-          "BACKEND-001"
-        ]
+        "resource_ref": "lab_worker",
+        "runtime": {
+          "kind": "network_namespace",
+          "id": "ne15c0355daff",
+          "filesystem_isolation": true
+        }
       },
       {
         "device_id": "device_2",
-        "role": "pc",
-        "cloud_representation": "isolated_network_namespace",
-        "resource_ref": "lab_worker",
-        "configuration": {
-          "source_device_id": "device_2"
+        "name": "PC2",
+        "type": "pc",
+        "network": {
+          "ip_address": "10.0.0.2",
+          "prefix_length": 24,
+          "subnet_mask": "255.255.255.0",
+          "network_address": "10.0.0.0"
         },
-        "rule_ids": [
-          "BACKEND-001"
-        ]
+        "resource_ref": "lab_worker",
+        "runtime": {
+          "kind": "network_namespace",
+          "id": "n96b1d6862715",
+          "filesystem_isolation": true
+        }
       }
     ],
     "networking": {
       "links": [
         {
-          "source_link_id": "link_1",
+          "link_id": "link_1",
           "implementation": "veth",
-          "resource_ref": "lab_worker"
+          "resource_ref": "lab_worker",
+          "network": {
+            "network_address": "10.0.0.0",
+            "prefix_length": 24,
+            "subnet_mask": "255.255.255.0",
+            "source_ip": "10.0.0.1",
+            "target_ip": "10.0.0.2"
+          },
+          "source": {
+            "device_id": "device_1",
+            "runtime_ref": "ne15c0355daff",
+            "interface_id": "va8d96f53b1888",
+            "ip_address": "10.0.0.1",
+            "prefix_length": 24
+          },
+          "target": {
+            "device_id": "device_2",
+            "runtime_ref": "n96b1d6862715",
+            "interface_id": "vb8d96f53b1888",
+            "ip_address": "10.0.0.2",
+            "prefix_length": 24
+          }
         }
       ],
-      "addressing": [
-        {
-          "device_id": "device_1",
-          "ip_address": "10.0.0.1",
-          "prefix_length": 24
-        },
-        {
-          "device_id": "device_2",
-          "ip_address": "10.0.0.2",
-          "prefix_length": 24
-        }
-      ],
-      "security": []
+      "isolation": {
+        "worker_forwards_lab_traffic": false,
+        "management_enters_lab": false,
+        "automatic_masquerade": false,
+        "automatic_proxy_arp": false
+      }
+    },
+    "configuration_targets": [
+      {
+        "device_id": "device_1",
+        "resource_ref": "lab_worker",
+        "runtime_ref": "ne15c0355daff",
+        "management_ref": "deployment.worker_management",
+        "interface_refs": [
+          "va8d96f53b1888"
+        ]
+      },
+      {
+        "device_id": "device_2",
+        "resource_ref": "lab_worker",
+        "runtime_ref": "n96b1d6862715",
+        "management_ref": "deployment.worker_management",
+        "interface_refs": [
+          "vb8d96f53b1888"
+        ]
+      }
+    ],
+    "initial_configuration": {
+      "static_routes": [],
+      "default_gateways": [],
+      "routing_protocols": [],
+      "services": [],
+      "connected_routes": "from_exact_endpoint_addresses",
+      "router_ipv4_forwarding": true,
+      "host_ipv4_forwarding": false,
+      "bridge_stp": false,
+      "configuration_stage": "deferred_to_external_agent"
     },
     "dependencies": [
-      "An external runtime must realize the isolated stacks and exact source cable."
-    ]
+      "Resolve transport CIDRs, an eligible Linux AMI and worker management access.",
+      "Implement isolated node runtimes and exact veth links before applying later configuration.",
+      "Validate sizing, storage and total deployment cost before provisioning."
+    ],
+    "verification_status": "not_run"
   },
   "rule_ids": [
     "BACKEND-001",
     "EX-PC-DIRECT"
   ],
   "limitations": [
-    "Illustrative hand-authored plan; capacity, management access and live connectivity are not verified."
+    "Runtime implementation and packet behavior have not been verified.",
+    "Routing protocols, gateways and services require the later user configuration stage.",
+    "Worker capacity is provisional; catalog prices and availability need rechecking before deployment.",
+    "Management access, Linux image and package delivery must be resolved before configuration."
   ],
   "architecture": {
     "devices": [

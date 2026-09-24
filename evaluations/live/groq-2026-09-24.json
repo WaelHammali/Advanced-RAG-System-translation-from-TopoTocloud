@@ -1,0 +1,241 @@
+{
+  "schema_version": "1.0",
+  "completed_at": "2026-09-24T09:21:10.876137+00:00",
+  "tested_commit": "7b96046187bad4580caa95b954fe0694f917c0ed",
+  "provider": "Groq",
+  "model": "openai/gpt-oss-120b",
+  "retrieval_backend": "lexical",
+  "sdk": "groq 1.7.0",
+  "python": "3.14.6",
+  "live_requests": 3,
+  "automatic_retries": 0,
+  "model_fallbacks": 0,
+  "passed": 2,
+  "blocked_by_request_limit": 1,
+  "reported_tokens": 14750,
+  "checks": [
+    "Original topology preserved",
+    "Strict cloud plan contract",
+    "Exact device, cable and runtime targets",
+    "Educational hosting policy",
+    "No added routes, gateways, protocols or services",
+    "Only retrieved rule IDs cited"
+  ],
+  "limits": [
+    "Three single-run fixtures are not a reliability benchmark.",
+    "Hybrid embeddings and reranking were not tested.",
+    "No AWS resources were provisioned and no packets or protocol convergence were tested.",
+    "The five-device LAN was rejected by Groq with HTTP 413; no plan was produced.",
+    "The batch stopped on the provider limit; no retry or smaller-model fallback was attempted."
+  ],
+  "input_gate_checks": [
+    {
+      "case": "empty",
+      "status": "pass",
+      "model_requests": 0,
+      "issue_count": 2
+    },
+    {
+      "case": "single_pc",
+      "status": "pass",
+      "model_requests": 0,
+      "issue_count": 2
+    },
+    {
+      "case": "missing_ip",
+      "status": "pass",
+      "model_requests": 0,
+      "issue_count": 1
+    },
+    {
+      "case": "unknown_link_target",
+      "status": "pass",
+      "model_requests": 0,
+      "issue_count": 3
+    }
+  ],
+  "cases": [
+    {
+      "case": "direct_pcs",
+      "input": "examples/edge_cases/two_pcs_direct.json",
+      "model": "openai/gpt-oss-120b",
+      "retrieval": "lexical",
+      "git_commit": "7b96046187bad4580caa95b954fe0694f917c0ed",
+      "started_at": "2026-09-24T09:17:41.753785+00:00",
+      "model_requests": 1,
+      "retries": 0,
+      "deployment_tested": false,
+      "api_latency_seconds": 4.16,
+      "response_model": "openai/gpt-oss-120b",
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 5045,
+        "completion_tokens": 1534,
+        "total_tokens": 6579,
+        "prompt_time": 0.242264303,
+        "completion_time": 3.23467523,
+        "total_time": 3.476939533
+      },
+      "rate_limits": {
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-tokens": "2683",
+        "x-ratelimit-reset-tokens": "39.877s",
+        "x-ratelimit-remaining-requests": "999"
+      },
+      "status": "pass",
+      "source_devices": 2,
+      "source_links": 1,
+      "instance_type": "t3a.micro",
+      "cited_rule_ids": [
+        "CORE-001",
+        "CORE-002",
+        "CORE-003",
+        "MAP-001",
+        "MAP-002",
+        "BACKEND-001",
+        "BACKEND-002",
+        "BACKEND-003",
+        "PLAN-001",
+        "ADDR-002",
+        "INPUT-001",
+        "EX-PC-DIRECT"
+      ],
+      "limitation_count": 7,
+      "elapsed_seconds": 4.167,
+      "input_sha256": "f6197121110596e8c3aa17b19f2122f958c5c0691761dcd6c6b8d482b4e3b831",
+      "request_measurements": {
+        "message_characters": 20657,
+        "retrieved_rule_count": 12,
+        "retrieved_rule_ids": [
+          "CORE-001",
+          "CORE-002",
+          "CORE-003",
+          "MAP-001",
+          "MAP-002",
+          "BACKEND-001",
+          "BACKEND-002",
+          "BACKEND-003",
+          "PLAN-001",
+          "ADDR-002",
+          "INPUT-001",
+          "EX-PC-DIRECT"
+        ],
+        "max_completion_tokens": 4096,
+        "request_sha256": "62eefea54e4453f7bb57f88d226eb4a43104b790687e6945ca0a29d9850afd62",
+        "note": "Character counts are not token counts. Measurements reconstructed locally without an API call."
+      }
+    },
+    {
+      "case": "router_chain",
+      "input": "examples/edge_cases/router_chain_no_routes.json",
+      "model": "openai/gpt-oss-120b",
+      "retrieval": "lexical",
+      "git_commit": "7b96046187bad4580caa95b954fe0694f917c0ed",
+      "started_at": "2026-09-24T09:18:48.171099+00:00",
+      "model_requests": 1,
+      "retries": 0,
+      "deployment_tested": false,
+      "api_latency_seconds": 5.459,
+      "response_model": "openai/gpt-oss-120b",
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 5981,
+        "completion_tokens": 2190,
+        "total_tokens": 8171,
+        "prompt_time": 0.341146093,
+        "completion_time": 4.566289899,
+        "total_time": 4.907435992
+      },
+      "rate_limits": {
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-tokens": "1728",
+        "x-ratelimit-reset-tokens": "47.04s",
+        "x-ratelimit-remaining-requests": "998"
+      },
+      "status": "pass",
+      "source_devices": 4,
+      "source_links": 3,
+      "instance_type": "t3a.small",
+      "cited_rule_ids": [
+        "CORE-001",
+        "CORE-002",
+        "CORE-003",
+        "MAP-001",
+        "MAP-002",
+        "BACKEND-001",
+        "BACKEND-002",
+        "BACKEND-003",
+        "PLAN-001"
+      ],
+      "limitation_count": 8,
+      "elapsed_seconds": 5.464,
+      "input_sha256": "5097e9c1ded1d945bc94e8441b49bc7a9f2721c5d46009ab45ea3f82e538cd88",
+      "request_measurements": {
+        "message_characters": 22956,
+        "retrieved_rule_count": 12,
+        "retrieved_rule_ids": [
+          "CORE-001",
+          "CORE-002",
+          "CORE-003",
+          "MAP-001",
+          "MAP-002",
+          "BACKEND-001",
+          "BACKEND-002",
+          "BACKEND-003",
+          "PLAN-001",
+          "ROUTE-001",
+          "ADDR-002",
+          "EX-STANDALONE"
+        ],
+        "max_completion_tokens": 4096,
+        "request_sha256": "b85c28be170160e9df030f967660255e4ac379f620c8f735f40d2a2f6e437d01",
+        "note": "Character counts are not token counts. Measurements reconstructed locally without an API call."
+      }
+    },
+    {
+      "case": "small_lan",
+      "input": "examples/architecture.json",
+      "model": "openai/gpt-oss-120b",
+      "retrieval": "lexical",
+      "git_commit": "7b96046187bad4580caa95b954fe0694f917c0ed",
+      "started_at": "2026-09-24T09:20:06.922237+00:00",
+      "model_requests": 1,
+      "retries": 0,
+      "deployment_tested": false,
+      "api_latency_seconds": 0.413,
+      "status": "blocked_request_limit",
+      "error_type": "RuntimeError",
+      "error": "The architecture and retrieved context exceed Groq's request limit. Use a smaller lab or fewer retrieved records; no plan was generated.",
+      "http_statuses": [
+        413
+      ],
+      "elapsed_seconds": 0.419,
+      "input_sha256": "0a7bd541ce760041542cc6ba3e7319fa5b0bcb07b8403c1bd6b8b4878e1e0cdd",
+      "request_measurements": {
+        "message_characters": 28308,
+        "retrieved_rule_count": 16,
+        "retrieved_rule_ids": [
+          "CORE-001",
+          "CORE-002",
+          "CORE-003",
+          "MAP-001",
+          "MAP-002",
+          "BACKEND-001",
+          "BACKEND-002",
+          "BACKEND-003",
+          "PLAN-001",
+          "L2-001",
+          "L2-003",
+          "ROUTE-001",
+          "ADDR-002",
+          "EX-STANDALONE",
+          "VERIFY-002",
+          "EX-LAN"
+        ],
+        "max_completion_tokens": 4096,
+        "request_sha256": "4be20f206336cbfbfa876c9a7d00754694c397048a26fa9b802636366e1584e3",
+        "note": "Character counts are not token counts. Measurements reconstructed locally without an API call."
+      }
+    }
+  ]
+}

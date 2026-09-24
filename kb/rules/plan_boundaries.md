@@ -6,7 +6,7 @@ Phase: topology
 Status: target_specification
 Keywords: AWS, JSON, cloud plan, configuration, source graph, resource mapping
 Applies: Translating a ready architecture into an AWS JSON plan.
-Required: Follow required_cloud_plan exactly: AWS resources, device_mapping, per-cable veth endpoints, configuration_targets and empty initial route/protocol/service lists. Educational hosting is selected by Python from a reviewed bounded catalog. Later configuration belongs to the external agent/generator.
+Required: Derive the plan deterministically from the validated source: AWS resources, device_mapping, per-cable veth endpoints, configuration_targets and empty initial route/protocol/service lists. Educational hosting is selected by Python from a reviewed bounded catalog. Later configuration belongs to the external agent/generator.
 Forbidden: Do not output deployment files, executable commands, provider-specific playbooks or a second independently inferred source graph.
 Expected: One internally consistent AWS plan plus unchanged source architecture and rule provenance. Resource references are symbolic until an external implementation exists.
 Verify: Python checks complete source coverage, exact addressing, stable runtime targets and the selected hosting profile. Record unresolved management/bootstrap and capacity dependencies.

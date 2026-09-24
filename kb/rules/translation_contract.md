@@ -36,7 +36,7 @@ Phase: topology
 Status: target_specification
 Keywords: AWS, JSON, cloud_plan, configuration, translation, boundaries
 Applies: Every architecture JSON translation request.
-Required: Return the exact supplied required_cloud_plan with contract_version 1.0, AWS hosting, device_mapping, networking and configuration_targets. Python verifies all fields against source-derived requirements; attach source/provenance outside the model.
+Required: Python constructs cloud_plan with contract_version 1.0, AWS hosting, device_mapping, networking and configuration_targets from validated source. The model reviews compact topology facts and cites knowledge; it cannot write plan fields. Attach source/provenance in Python.
 Forbidden: No deployment code, files, dialogue, validation reports or fabricated runtime results. Deterministic readiness errors are a separate response before translation.
 Expected: One JSON object with cloud_plan, rule_ids and limitations; architecture and knowledge are attached by the app. Dependencies describe requirements, not completed work.
 Verify: Reject changed devices, links, addresses, references, hosting choices or added initial routing. A conforming plan is not a live connectivity measurement.

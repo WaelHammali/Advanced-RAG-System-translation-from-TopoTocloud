@@ -28,7 +28,7 @@ def runtime_id(kind: str, source_id: str) -> str:
 
 
 def required_cloud_plan(architecture: dict) -> dict:
-    """Explicit requirements supplied to the model and independently checked afterward."""
+    """Derive the public plan in Python; no model-generated topology is accepted."""
     hosting = select_hosting(architecture)
     worker = "lab_worker"
     mappings = []

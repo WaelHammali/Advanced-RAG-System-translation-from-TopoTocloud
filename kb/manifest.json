@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "corpus_version": "4.0.0",
+  "corpus_version": "4.1.0",
   "status": "target_specification",
   "default_mode": "behavioral_lab",
   "reviewed_on": "2026-09-17",
@@ -112,7 +112,7 @@
     },
     {
       "path": "kb/rules/plan_boundaries.md",
-      "sha256": "1dea588c23e7f97d2b432429c0891a41b810cfc202d6228f5ef5217d932705f2"
+      "sha256": "67158bcfcc2640e0b0ac27750a4858665b811387fb8dbad296b78d83ae1b1798"
     },
     {
       "path": "kb/rules/real_router_appliance_rules.md",
@@ -140,7 +140,7 @@
     },
     {
       "path": "kb/rules/translation_contract.md",
-      "sha256": "d9597185207f6a84007323dab72ce0fb641ef7ff4128eebba3f45749c661e57e"
+      "sha256": "7da14b33257ca5449700786bb14e906c04e1a8aa9c068b53a3d3785d197ce42f"
     },
     {
       "path": "kb/rules/verification_rules.md",
@@ -821,8 +821,8 @@
       "kind": "rule",
       "mode": "behavioral_lab",
       "phase": "topology",
-      "characters": 1174,
-      "sha256": "6e6a8d8271eadd43cd76c40b5ba8eef17b35d9c1d97f4cd1461167ddff28f52c",
+      "characters": 1199,
+      "sha256": "56fdcba0fe0d17bccdb60f58c433a8faa56d94e77be242aa9a180ad208febbe2",
       "sources": [
         "PROJECT"
       ],
@@ -1187,8 +1187,8 @@
       "kind": "rule",
       "mode": "all",
       "phase": "topology",
-      "characters": 1082,
-      "sha256": "3f8583f4a8e9539b5942a99614ab859f250cbf051b6fa6df848aa36b78423751",
+      "characters": 1106,
+      "sha256": "f02196836fe8b83b27ed2b8fa6111ffe42e6056ac3c1de053899c141dec2196c",
       "sources": [
         "PROJECT"
       ],

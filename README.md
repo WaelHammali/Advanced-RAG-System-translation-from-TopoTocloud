@@ -1,7 +1,8 @@
 # Network architecture JSON → AWS plan JSON
 
 This application validates a network topology, retrieves networking knowledge,
-and uses Groq to translate it into a structured AWS architecture plan. It enforces exact
+and constructs a structured AWS architecture plan in Python, with a compact
+Groq review grounded in retrieved rules. It enforces exact
 source devices, links, addressing and future configuration targets. It returns JSON only and does not provision
 infrastructure or execute configuration.
 
@@ -51,7 +52,7 @@ See the [JSON contract](docs/json-contract.md) and the
 
 Incomplete input is rejected before retrieval or model calls. Single isolated
 devices remain blocked under the project's policy; directly connected PCs are
-valid. Nested output checks reject altered topology and hosting choices. Live behavior still requires external runtime implementation and packet tests.
+valid. Python owns topology and hosting; the model returns citations and limitations only. Live behavior still requires external runtime implementation and packet tests.
 
 `check` returns a readiness report, with exit 0 for ready or 2 for incomplete.
 `plan` and `context` return readiness errors on stderr with exit 2; other runtime

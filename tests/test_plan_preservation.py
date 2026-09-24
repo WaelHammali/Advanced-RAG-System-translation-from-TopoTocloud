@@ -162,7 +162,7 @@ def test_invalid_output_never_replaces_previous_file(tmp_path, monkeypatch, caps
         == 1
     )
     assert output.read_text() == "previous"
-    assert "Missing or unexpected" in capsys.readouterr().err
+    assert "Unexpected model response sections" in capsys.readouterr().err
 
 
 def test_switch_cycle_and_extensions_cannot_be_silently_declared_ready(tmp_path):
@@ -174,9 +174,7 @@ def test_switch_cycle_and_extensions_cannot_be_silently_declared_ready(tmp_path)
             self.chat = SimpleNamespace(completions=self)
 
         def create(self, **request):
-            supplied = json.loads(request["messages"][1]["content"])
             response = {
-                "cloud_plan": supplied["required_cloud_plan"],
                 "rule_ids": ["CORE-001"],
                 "limitations": [],
             }

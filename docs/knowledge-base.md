@@ -1,6 +1,6 @@
 # Knowledge ownership and maintenance
 
-Corpus version: 4.0.0.
+Corpus version: 4.1.0.
 
 `kb` is machine-facing domain knowledge. `docs` is human-facing application
 documentation. They are not interchangeable: the retriever recursively reads

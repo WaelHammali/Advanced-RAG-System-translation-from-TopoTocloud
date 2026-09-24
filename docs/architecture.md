@@ -16,10 +16,13 @@ Phase 1 is independent and excluded from root application checks.
 5. `retriever.py` selects topology-phase KB cards with mandatory mapping/isolation
    rules, plus relevant examples. The source is never normalized or repaired.
 6. `plan_contract.py` derives exact hosting, device, cable, runtime and later
-   configuration-target requirements. `planner.py` supplies these and the source
-   and retrieved knowledge to Groq, requesting the required AWS plan and limitations.
-7. Python checks the model envelope, citations and every nested plan requirement.
-   It adds mandatory limitations and attaches the authoritative source/provenance.
+   configuration-target requirements and constructs the public plan in Python.
+   `review_context.py` projects every device/cable and effective endpoint prefix
+   into compact review facts, removing labels, opaque IDs and unknown extensions
+   only from the model request. Rule semantics remain verbatim; indexing metadata
+   is omitted. Groq returns only citations and additional limitations.
+7. Python checks the strict review envelope and retrieved citations, adds mandatory
+   limitations, and attaches its plan and the authoritative source/provenance.
 
 Public APIs are `plan_architecture`, `check_readiness`, and `apply_corrections`.
 Both orchestration and direct planner calls enforce readiness. Injected retrievers
@@ -55,8 +58,10 @@ and [clarification interface](validation.md). Stable safe runtime names derive
 from source IDs, not display names; future operations must address those targets.
 
 Groq uses GPT-OSS 120B by default, with 20B as the supported alternative. Requests
-use JSON object mode, temperature zero, medium reasoning, and a 4,096-token
-completion cap including reasoning. SDK retries and provider/model fallback are
+use strict JSON Schema mode, temperature zero, medium reasoning, and a 1,536-token
+completion cap including reasoning. The internal schema allows only `rule_ids`
+and `limitations`; extra fields, fabricated citations and duplicate IDs fail.
+Reviews may contain at most eight additional limitations of 400 characters each. SDK retries and provider/model fallback are
 disabled. Large inputs/plans may exceed free-tier request/completion limits even
 inside the hosting profile's node limit; truncation fails rather than losing nodes.
 No input size guarantees or live-model success claims are made by offline tests.

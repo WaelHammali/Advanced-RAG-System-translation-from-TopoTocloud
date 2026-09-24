@@ -9,11 +9,11 @@ from .contracts import JSONObject, KnowledgeRecord
 from .json_io import dumps_json, loads_json
 from .plan_contract import required_cloud_plan, required_limitations, validate_cloud_plan
 from .readiness import require_ready
+from .review_context import review_context
 
 SYSTEM_PROMPT = (ROOT_DIR / "net2cloud" / "prompts" / "planner.txt").read_text(encoding="utf-8")
 
-PLAN_SECTION_TYPES = {
-    "cloud_plan": dict,
+REVIEW_SECTION_TYPES = {
     "rule_ids": list,
     "limitations": list,
 }
@@ -41,33 +41,52 @@ def _response_content(response: Any) -> str:
     return content
 
 
-def _parse_plan(content: str) -> JSONObject:
-    """Check the response envelope only; nested plan semantics remain external."""
+def _parse_review(content: str) -> JSONObject:
+    """Reject any model attempt to supply topology or deployment instructions."""
     try:
         plan = loads_json(content)
     except ValueError as error:
         raise PlanResponseError("The model returned invalid or ambiguous JSON.") from error
     if not isinstance(plan, dict):
         raise PlanResponseError("The model response must be a JSON object.")
-    for section, expected_type in PLAN_SECTION_TYPES.items():
+    unexpected = set(plan) - REVIEW_SECTION_TYPES.keys()
+    if unexpected:
+        raise PlanResponseError(
+            "Unexpected model response sections: " + ", ".join(sorted(unexpected))
+        )
+    for section, expected_type in REVIEW_SECTION_TYPES.items():
         if not isinstance(plan.get(section), expected_type):
             raise PlanResponseError(
                 f"The model plan requires {section} as {expected_type.__name__}."
             )
-    if plan["cloud_plan"].get("provider") != "aws":
-        raise PlanResponseError("cloud_plan.provider must be aws.")
     for section in ("rule_ids", "limitations"):
         if any(not isinstance(item, str) or not item.strip() for item in plan[section]):
             raise PlanResponseError(f"{section} must contain nonempty strings.")
     if len(set(plan["rule_ids"])) != len(plan["rule_ids"]):
         raise PlanResponseError("rule_ids must not contain duplicates.")
-    unexpected = set(plan) - PLAN_SECTION_TYPES.keys() - {"architecture", "knowledge"}
-    if unexpected:
-        raise PlanResponseError(
-            "Unexpected model response sections: " + ", ".join(sorted(unexpected))
-        )
-    # app.py attaches source architecture and knowledge from authoritative data.
-    return {section: plan[section] for section in PLAN_SECTION_TYPES}
+    if len(plan["limitations"]) > 8 or any(len(item) > 400 for item in plan["limitations"]):
+        raise PlanResponseError("limitations must have at most eight entries of 400 characters.")
+    return plan
+
+
+def _response_format(rule_ids: list[str]) -> JSONObject:
+    """Provider schema improves syntax; local validation still enforces semantics."""
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "topology_knowledge_review",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "rule_ids": {"type": "array", "items": {"type": "string", "enum": rule_ids}},
+                    "limitations": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["rule_ids", "limitations"],
+                "additionalProperties": False,
+            },
+        },
+    }
 
 
 def plan_with_rag(
@@ -79,12 +98,27 @@ def plan_with_rag(
     """Translate a ready architecture without dialogue or topology overrides."""
     require_ready(architecture)
     required_plan = required_cloud_plan(architecture)
+    validate_cloud_plan(required_plan, architecture)
     if PLAN_MODEL not in SUPPORTED_PLAN_MODELS:
         raise ValueError(
             "NET2TF_PLAN_MODEL must be one of "
             + ", ".join(SUPPORTED_PLAN_MODELS)
             + ". Use a Groq Free-plan account; other models are disabled."
         )
+    rule_ids = [record["rule_id"] for record in retrieved_chunks]
+    if (
+        not rule_ids
+        or any(not isinstance(rid, str) or not rid.strip() for rid in rule_ids)
+        or len(rule_ids) != len(set(rule_ids))
+    ):
+        raise ValueError("Retrieved knowledge needs nonempty, unique rule IDs.")
+    if any(
+        record.get("phase", "topology") != "topology"
+        or record.get("mode", "all") not in {"all", "behavioral_lab"}
+        for record in retrieved_chunks
+    ):
+        raise ValueError("Only behavioral topology knowledge is accepted for planning.")
+    context = review_context(architecture, required_plan, retrieved_chunks)
     if client is None:
         try:
             from groq import Groq
@@ -93,12 +127,7 @@ def plan_with_rag(
                 "Planning requires the groq package; install requirements.txt."
             ) from error
         # GROQ_API_KEY comes from the caller. Quota failures must not trigger retries.
-        client = Groq(max_retries=0)
-
-    context = [
-        {"rule_id": c["rule_id"], "source": c["source"], "heading": c["heading"], "text": c["text"]}
-        for c in retrieved_chunks
-    ]
+        client = Groq(max_retries=0, timeout=60.0)
     try:
         response = client.chat.completions.create(
             model=PLAN_MODEL,
@@ -106,18 +135,12 @@ def plan_with_rag(
             max_completion_tokens=PLAN_MAX_COMPLETION_TOKENS,
             reasoning_effort="medium",
             include_reasoning=False,
-            response_format={"type": "json_object"},
+            response_format=_response_format(rule_ids),
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {
                     "role": "user",
-                    "content": dumps_json(
-                        {
-                            "architecture": architecture,
-                            "knowledge": context,
-                            "required_cloud_plan": required_plan,
-                        }
-                    ),
+                    "content": dumps_json(context),
                 },
             ],
         )
@@ -134,7 +157,7 @@ def plan_with_rag(
                 "Use a smaller lab or fewer retrieved records; no plan was generated."
             ) from error
         raise
-    plan = _parse_plan(_response_content(response))
+    plan = _parse_review(_response_content(response))
     unknown_rules = set(plan["rule_ids"]) - {record["rule_id"] for record in retrieved_chunks}
     if unknown_rules:
         raise PlanResponseError(
@@ -142,7 +165,7 @@ def plan_with_rag(
         )
     if not plan["rule_ids"]:
         raise PlanResponseError("The plan must cite at least one retrieved rule.")
-    validate_cloud_plan(plan["cloud_plan"], architecture, expected=required_plan)
+    plan["cloud_plan"] = required_plan
     plan["limitations"] = list(
         dict.fromkeys([*required_limitations(architecture), *plan["limitations"]])
     )

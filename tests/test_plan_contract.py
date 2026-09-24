@@ -17,11 +17,20 @@ from net2cloud.planner import plan_with_rag
 from net2cloud.retriever import KnowledgeRetriever
 
 ROOT = Path(__file__).resolve().parents[1]
+RECORDS = [
+    {
+        "rule_id": "CORE-001",
+        "source": "test",
+        "heading": "test",
+        "text": "Preserve topology",
+        "mode": "all",
+        "phase": "topology",
+    }
+]
 
 
 def valid_response(architecture, rules=None):
     return {
-        "cloud_plan": required_cloud_plan(architecture),
         "rule_ids": rules if rules is not None else ["CORE-001"],
         "limitations": [],
     }
@@ -56,11 +65,12 @@ def retrieval(tmp_path):
     return KnowledgeRetriever(backend="lexical", index_dir=tmp_path / "index")
 
 
-def test_mixed_configuration_reaches_model_and_input_remains_unchanged(architecture, retrieval):
+def test_compact_review_preserves_source_without_sending_uninterpreted_text(
+    architecture, retrieval
+):
     architecture["custom"] = {"unicode": "réseau", "values": [False, None, 0]}
     before = deepcopy(architecture)
     model_plan = valid_response(architecture, ["MAP-001", "L2-003"])
-    model_plan.update(architecture={"invented": True}, knowledge=[])
     client = ModelClient(json.dumps(model_plan))
     output = app.plan_architecture(architecture, client=client, retriever=retrieval)
     assert architecture == before == output["architecture"]
@@ -68,11 +78,14 @@ def test_mixed_configuration_reaches_model_and_input_remains_unchanged(architect
     assert architecture == before
     (request,) = client.calls
     supplied = json.loads(request["messages"][1]["content"])
-    assert supplied["architecture"] == before
+    assert "architecture" not in supplied and "required_cloud_plan" not in supplied
+    assert "custom" not in supplied["topology"]
+    assert len(supplied["topology"]["devices"]) == len(before["devices"])
     ids = {chunk["rule_id"] for chunk in supplied["knowledge"]}
     assert {*CORE_RULE_IDS, "MAP-001", "L2-003"} <= ids
-    assert output["cloud_plan"] == model_plan["cloud_plan"]
-    assert request["response_format"] == {"type": "json_object"}
+    assert output["cloud_plan"] == required_cloud_plan(before)
+    assert request["response_format"]["type"] == "json_schema"
+    assert request["response_format"]["json_schema"]["strict"] is True
     assert {item["rule_id"] for item in output["knowledge"]} == ids
 
 
@@ -84,7 +97,7 @@ def test_arbitrary_extra_fields_are_preserved_on_ready_input(architecture, retri
     assert len(client.calls) == 1
 
 
-def test_many_routers_do_not_override_model_plan(retrieval):
+def test_many_routers_preserve_the_deterministic_plan(retrieval):
     # A flat chain on one shared subnet: each router has at most one address,
     # used consistently across however many links it has.
     architecture = {
@@ -124,18 +137,18 @@ def test_many_routers_do_not_override_model_plan(retrieval):
     output = app.plan_architecture(
         architecture, client=ModelClient(json.dumps(expected)), retriever=retrieval
     )
-    assert output["cloud_plan"] == expected["cloud_plan"]
+    assert output["cloud_plan"] == required_cloud_plan(architecture)
 
 
 @pytest.mark.parametrize("payload", ["not JSON", "```json\n{}\n```", "[]", "null"])
 def test_invalid_model_envelope_is_an_error_not_a_fallback(payload, architecture):
     with pytest.raises(ValueError):
-        plan_with_rag(architecture, [], client=ModelClient(payload))
+        plan_with_rag(architecture, RECORDS, client=ModelClient(payload))
 
 
 def test_truncated_model_response_is_rejected_even_if_it_parses(architecture):
     with pytest.raises(RuntimeError, match="truncated"):
-        plan_with_rag(architecture, [], client=ModelClient("{}", finish_reason="length"))
+        plan_with_rag(architecture, RECORDS, client=ModelClient("{}", finish_reason="length"))
 
 
 @pytest.mark.parametrize(
@@ -160,7 +173,7 @@ def test_truncated_model_response_is_rejected_even_if_it_parses(architecture):
 )
 def test_non_plan_model_objects_are_rejected(payload, architecture):
     with pytest.raises(ValueError):
-        plan_with_rag(architecture, [], client=ModelClient(json.dumps(payload)))
+        plan_with_rag(architecture, RECORDS, client=ModelClient(json.dumps(payload)))
 
 
 def test_model_transport_errors_are_not_hidden(retrieval, architecture):
@@ -203,7 +216,7 @@ def test_cli_plan_writes_only_json_artifact(tmp_path, monkeypatch, capsys, archi
     client = ModelClient(json.dumps(valid_response(architecture)))
 
     def make_client(**options):
-        assert options == {"max_retries": 0}
+        assert options == {"max_retries": 0, "timeout": 60.0}
         return client
 
     monkeypatch.setitem(sys.modules, "groq", SimpleNamespace(Groq=make_client))
@@ -253,13 +266,13 @@ def test_cli_bad_json_envelope_fails_cleanly(tmp_path, capsys, content):
 )
 def test_empty_or_ambiguous_provider_content_is_rejected(payload, architecture):
     with pytest.raises(ValueError):
-        plan_with_rag(architecture, [], client=ModelClient(payload))
+        plan_with_rag(architecture, RECORDS, client=ModelClient(payload))
 
 
 @pytest.mark.parametrize("reason", [None, "content_filter", "tool_calls"])
 def test_non_completion_finish_reason_is_an_error(reason, architecture):
     with pytest.raises(ValueError, match="did not complete"):
-        plan_with_rag(architecture, [], client=ModelClient("{}", finish_reason=reason))
+        plan_with_rag(architecture, RECORDS, client=ModelClient("{}", finish_reason=reason))
 
 
 def test_provider_with_no_choices_has_a_clear_error(architecture):
@@ -268,7 +281,7 @@ def test_provider_with_no_choices_has_a_clear_error(architecture):
             return SimpleNamespace(choices=[])
 
     with pytest.raises(ValueError, match="no completion"):
-        plan_with_rag(architecture, [], client=EmptyClient("{}"))
+        plan_with_rag(architecture, RECORDS, client=EmptyClient("{}"))
 
 
 def test_cli_cannot_overwrite_input(tmp_path, capsys):
@@ -346,14 +359,14 @@ def test_gpt_oss_request_preserves_input_and_bounds_completion(model, architectu
     plan_with_rag(architecture, records, client=client)
     (request,) = client.calls
     assert request["model"] == model
-    assert request["max_completion_tokens"] == 4096
+    assert request["max_completion_tokens"] == 1536
     assert request["reasoning_effort"] == "medium"
     assert request["include_reasoning"] is False
     assert "reasoning_format" not in request
     content = request["messages"][1]["content"]
     supplied = json.loads(content)
-    assert supplied["architecture"] == architecture
-    assert supplied["required_cloud_plan"] == required_cloud_plan(architecture)
+    assert "architecture" not in supplied and "required_cloud_plan" not in supplied
+    assert len(supplied["topology"]["links"]) == len(architecture["links"])
     assert "\n" not in content
 
 
@@ -362,7 +375,7 @@ def test_unapproved_model_is_rejected_before_provider_call(model, architecture, 
     monkeypatch.setattr(planner, "PLAN_MODEL", model)
     client = ModelClient("{}")
     with pytest.raises(ValueError, match="other models are disabled"):
-        plan_with_rag(architecture, [], client=client)
+        plan_with_rag(architecture, RECORDS, client=client)
     assert client.calls == []
 
 
@@ -411,15 +424,15 @@ def test_provider_limits_fail_once_and_preserve_existing_output(
 @pytest.mark.parametrize("provider", [None, "", "azure", "gcp", [], {}])
 def test_non_aws_model_output_is_rejected(provider, architecture):
     response = {"cloud_plan": {"provider": provider}, "rule_ids": [], "limitations": []}
-    with pytest.raises(ValueError, match="provider must be aws"):
-        plan_with_rag(architecture, [], client=ModelClient(json.dumps(response)))
+    with pytest.raises(ValueError, match="Unexpected model response sections"):
+        plan_with_rag(architecture, RECORDS, client=ModelClient(json.dumps(response)))
 
 
 @pytest.mark.parametrize("section", ["ansible_plan", "terraform_plan", "automation_plan", "files"])
 def test_deployment_sections_cannot_reenter_the_output(section, architecture):
     response = {"cloud_plan": {"provider": "aws"}, "rule_ids": [], "limitations": [], section: {}}
     with pytest.raises(ValueError, match="Unexpected model response sections"):
-        plan_with_rag(architecture, [], client=ModelClient(json.dumps(response)))
+        plan_with_rag(architecture, RECORDS, client=ModelClient(json.dumps(response)))
 
 
 def test_later_configuration_targets_match_all_source_devices(architecture, retrieval):
@@ -482,8 +495,7 @@ def test_package_cli_and_compatibility_launcher_agree_without_dependencies():
 
 def test_documented_aws_example_matches_the_response_boundary():
     example = json.loads((ROOT / "examples/aws_plan.json").read_text())
-    model_response = {key: example[key] for key in ("cloud_plan", "rule_ids", "limitations")}
-    assert planner._parse_plan(json.dumps(model_response)) == model_response
+    validate_cloud_plan(example["cloud_plan"], example["architecture"])
     from net2cloud.readiness import check_readiness
 
     assert check_readiness(example["architecture"])["ready"]
@@ -502,13 +514,43 @@ def test_documented_aws_example_matches_the_response_boundary():
     ],
 )
 def test_malformed_citations_and_limitations_are_rejected(section, value, architecture):
-    payload = {"cloud_plan": {"provider": "aws"}, "rule_ids": [], "limitations": []}
+    payload = {"rule_ids": [], "limitations": []}
     payload[section] = value
     with pytest.raises(ValueError, match=section):
-        plan_with_rag(architecture, [], client=ModelClient(json.dumps(payload)))
+        plan_with_rag(architecture, RECORDS, client=ModelClient(json.dumps(payload)))
 
 
 def test_model_cannot_claim_rules_it_was_not_given(architecture):
-    payload = {"cloud_plan": {"provider": "aws"}, "rule_ids": ["FAKE-001"], "limitations": []}
+    payload = {"rule_ids": ["FAKE-001"], "limitations": []}
     with pytest.raises(ValueError, match="outside the supplied context"):
-        plan_with_rag(architecture, [], client=ModelClient(json.dumps(payload)))
+        plan_with_rag(architecture, RECORDS, client=ModelClient(json.dumps(payload)))
+
+
+@pytest.mark.parametrize(
+    "records",
+    [
+        [],
+        RECORDS * 2,
+        [{**RECORDS[0], "phase": "configuration"}],
+        [{**RECORDS[0], "mode": "cloud_native"}],
+    ],
+)
+def test_unusable_context_fails_before_provider_call(architecture, records):
+    client = ModelClient("{}")
+    with pytest.raises(ValueError):
+        plan_with_rag(architecture, records, client=client)
+    assert client.calls == []
+
+
+@pytest.mark.parametrize("section", ["cloud_plan", "architecture", "knowledge", "questions"])
+def test_model_cannot_add_sections_to_its_review(architecture, section):
+    payload = {"rule_ids": ["CORE-001"], "limitations": [], section: {}}
+    with pytest.raises(ValueError, match="Unexpected model response sections"):
+        plan_with_rag(architecture, RECORDS, client=ModelClient(json.dumps(payload)))
+
+
+@pytest.mark.parametrize("limitations", [["x"] * 9, ["x" * 401]])
+def test_model_limitations_have_a_bounded_size(architecture, limitations):
+    payload = {"rule_ids": ["CORE-001"], "limitations": limitations}
+    with pytest.raises(ValueError, match="eight entries"):
+        plan_with_rag(architecture, RECORDS, client=ModelClient(json.dumps(payload)))

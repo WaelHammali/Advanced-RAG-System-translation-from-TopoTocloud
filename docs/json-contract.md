@@ -30,9 +30,11 @@ limitations. They never select a different translation mode or configure softwar
 
 ## Output contract 1.0
 
-The model returns `cloud_plan`, nonempty retrieved `rule_ids`, and `limitations`.
-The application attaches the unchanged `architecture` and `knowledge` provenance,
-and mandatory warnings/dependencies that the model cannot suppress.
+The application returns `cloud_plan`, nonempty retrieved `rule_ids`, `limitations`,
+the unchanged `architecture` and `knowledge` provenance. Python constructs the
+plan and mandatory warnings/dependencies. Groq only returns an internal compact
+review containing `rule_ids` and additional `limitations`. The public JSON shape
+and plan contract version remain unchanged.
 
 `cloud_plan` has the following enforced fields:
 
@@ -55,13 +57,14 @@ must consume this version explicitly. Instantiating EC2 alone does not realize
 namespaces, bridges or cables: external runtime setup is a required step before
 later Ansible configuration.
 
-The current profile has one supported realization. The model receives its exact
-requirements and may assess/cite additional limitations, but cannot choose a
-different graph, instance, IP, configuration target, initial route or extra AWS
-resource. Python recursively checks fields, types, list coverage/order and values
-against requirements independently derived from the input. Missing devices,
-rewired links, changed addresses, unknown references and invented routing fail.
-There is no silent repair or fallback plan on model failure.
+The current profile has one supported realization. Python derives and validates
+the entire plan before calling Groq. The model reviews all nodes/cables and their
+effective addresses through compact facts, with locally numbered node references.
+It never receives or writes the full plan. Its strict response schema contains only
+citations and limitations; an attempted plan, source rewrite or deployment section
+is rejected locally as well. The standalone plan validator still rejects missing
+devices, rewired links, changed addresses, references and invented routing.
+No plan is published on model failure.
 
 This checks structural conformance, not live network equivalence. Linux software
 runtimes do not claim exact vendor behavior. Unsupported runtime types/capacity

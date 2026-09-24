@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Any
 
 from .config import (
-    CORE_RULE_IDS,
     EMBED_MAX_TOKENS,
     EMBED_MODEL,
     INDEX_DIR,
@@ -100,20 +99,26 @@ def _json(value: Any) -> str:
     return dumps_json(value, sort_keys=True)
 
 
-def _configuration_queries(architecture: dict[str, Any]) -> list[str]:
+def _topology_queries(architecture: dict[str, Any]) -> list[str]:
     """Retrieval-only feature queries for a devices/links topology.
 
     This selects knowledge only; it never enables, repairs or invents
-    configuration. The complete architecture remains the main query/model input.
+    configuration. Labels and uninterpreted extensions cannot steer retrieval.
     """
     queries: list[str] = []
     devices = architecture.get("devices", [])
     links = architecture.get("links", [])
 
     if isinstance(devices, list):
-        roles = [
-            str(device.get("type", "")).lower() for device in devices if isinstance(device, dict)
-        ]
+        roles = sorted(
+            {
+                str(device.get("type", "")).lower()
+                for device in devices
+                if isinstance(device, dict)
+                and str(device.get("type", "")).lower()
+                in {"pc", "server", "router", "switch", "bridge", "hub"}
+            }
+        )
         if roles:
             queries.append("device mapping " + " ".join(dict.fromkeys(roles)))
         if "switch" in roles or "bridge" in roles:
@@ -159,6 +164,55 @@ def _configuration_queries(architecture: dict[str, Any]) -> list[str]:
         if any(count >= 2 for count in host_switch_links.values()):
             queries.append("same switch same VLAN local ping ARP")
     return list(dict.fromkeys(queries))
+
+
+def topology_rule_ids(architecture: JSONObject) -> list[str]:
+    """Select mandatory cards from graph facts, never lexical coincidences."""
+    required = list(TOPOLOGY_RULE_IDS)
+    devices = {
+        d["id"]: d
+        for d in architecture.get("devices", [])
+        if isinstance(d, dict) and isinstance(d.get("id"), str)
+    }
+    roles = {key: str(d.get("type", "")).lower() for key, d in devices.items()}
+    if set(roles.values()) & {"switch", "bridge", "hub"}:
+        required.extend(["L2-001", "L2-003"])
+    if "router" in roles.values():
+        required.append("ROUTE-001")
+    neighbors = {key: set() for key in devices}
+    links = [link for link in architecture.get("links", []) if isinstance(link, dict)]
+    for link in links:
+        a, b = link.get("source"), link.get("target")
+        if a in devices and b in devices and a != b:
+            neighbors[a].add(b)
+            neighbors[b].add(a)
+            if roles[a] in {"pc", "server"} and roles[b] in {"pc", "server"}:
+                required.append("EX-PC-DIRECT")
+    if any(
+        roles[key] in {"switch", "bridge", "hub"}
+        and sum(roles[n] in {"pc", "server"} for n in peers) >= 2
+        for key, peers in neighbors.items()
+    ):
+        required.append("EX-LAN")
+    if any(
+        isinstance(item.get("network"), dict) and item["network"].get("prefix_length") in (31, 32)
+        for item in [*devices.values(), *links]
+    ):
+        required.append("EX-PREFIX31")
+    if any(not peers for peers in neighbors.values()):
+        required.append("EX-STANDALONE")
+    unseen = set(devices)
+    components = 0
+    while unseen:
+        components += 1
+        pending = [unseen.pop()]
+        while pending:
+            new = neighbors[pending.pop()] & unseen
+            unseen.difference_update(new)
+            pending.extend(new)
+    if components > 1:
+        required.append("EX-ISOLATED")
+    return list(dict.fromkeys(required))
 
 
 class _BM25Index:
@@ -394,17 +448,14 @@ class KnowledgeRetriever:
         records, fingerprint = self._documents()
         by_id = {record["rule_id"]: record for record in records}
         # Source extensions cannot change the fixed behavioral topology phase.
-        pinned = list(TOPOLOGY_RULE_IDS)
-        roles = {
-            str(d.get("type", "")).lower()
-            for d in architecture.get("devices", [])
-            if isinstance(d, dict)
-        }
-        if roles & {"switch", "bridge", "hub"}:
-            pinned.extend(["L2-001", "L2-003"])
-        if "router" in roles:
-            pinned.append("ROUTE-001")
-        pinned.append("ADDR-002")
+        pinned = topology_rule_ids(architecture)
+        if any(
+            rid not in by_id
+            or by_id[rid]["phase"] != "topology"
+            or by_id[rid]["mode"] not in {"all", "behavioral_lab"}
+            for rid in pinned
+        ):
+            raise RuntimeError("The knowledge corpus is missing applicable topology rules")
         core = [by_id[rid] for rid in pinned]
         mode = "behavioral_lab"
         candidates = [
@@ -413,32 +464,25 @@ class KnowledgeRetriever:
             if record["rule_id"] not in pinned
             and record["mode"] in {mode, "all"}
             and record["phase"] == "topology"
+            # Current examples have explicit applicability predicates above.
+            # An unrelated scenario must not enter via a generic word like PC.
+            and not record["rule_id"].startswith("EX-")
         ]
         if not candidates:
             return core
         texts = [record["text"] for record in candidates]
         lexical = _BM25Index(texts)
-        query = _json(architecture)
+        subjects = _topology_queries(architecture)
+        query = "IPv4 behavioral lab topology connected routes later configuration " + " ".join(
+            subjects
+        )
         scores = lexical.score(query)
-        subjects = _configuration_queries(architecture)
         ranking = (
             self._hybrid_rank(candidates, [query, *subjects], scores, fingerprint)
             if self.backend == "hybrid"
             else _rank(scores)
         )
-        # Give each topology feature a relevant record.
-        # This selects knowledge only; it never enables or repairs configuration.
-        selected: list[int] = []
-        for subject in subjects:
-            subject_scores = lexical.score(subject)
-            best = _rank(subject_scores)[0]
-            if subject_scores[best] > 0 and best not in selected:
-                selected.append(best)
-        for index in ranking:
-            if len(selected) + len(pinned) - len(CORE_RULE_IDS) >= self.top_k:
-                break
-            if index not in selected:
-                selected.append(index)
+        selected = ranking[: self.top_k]
         return core + [candidates[index] for index in selected]
 
 

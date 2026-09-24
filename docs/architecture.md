@@ -30,10 +30,16 @@ source topology; failures never publish a partial or silently repaired plan.
 
 BM25 is available without ML dependencies. Hybrid retrieval combines BM25 and
 local embeddings with reciprocal-rank fusion and cross-encoder reranking. Required
-core, device-mapping, runtime-isolation and link-realization cards are pinned.
-Switch/router roles add their required topology rules. Feature queries cover
-shared switches, direct host links and /31-/32 addressing. `top_k` is a positive
-integer target; required rules and feature coverage may exceed it.
+core, device-mapping, runtime-isolation, addressing and plan-boundary cards are pinned.
+Graph predicates add applicable switch/router, direct-host, shared-switch,
+disconnected-component and /31-/32 cards. Examples without a matching predicate
+are excluded. `top_k` is a positive maximum number of additional ranked rules
+(default 2); required cards do not consume that allowance.
+
+Both lexical and hybrid queries use topology features. Names, opaque IDs, literal
+IP values and unknown extension text cannot steer rule selection. The full source
+remains unchanged in the output; excluding those strings from retrieval does not
+remove devices, addresses or extensions from the plan.
 
 Cards tagged `Phase: configuration` are excluded. Source `translation_mode`
 extensions cannot change the fixed behavioral profile. Only `kb/` Markdown is

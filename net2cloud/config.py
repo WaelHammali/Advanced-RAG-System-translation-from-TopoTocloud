@@ -15,7 +15,7 @@ PLAN_MAX_COMPLETION_TOKENS = 4096
 EMBED_MODEL = os.environ.get("NET2TF_EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 RERANK_MODEL = os.environ.get("NET2TF_RERANK_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
 RETRIEVAL_BACKEND = os.environ.get("NET2TF_RETRIEVAL_BACKEND", "hybrid")
-TOP_K = 8
+TOP_K = 2  # Optional ranked records, in addition to required topology rules.
 MAX_CHARS_PER_CHUNK = 1800
 EMBED_MAX_TOKENS = 512
 CORE_RULE_IDS = ("CORE-001", "CORE-002", "CORE-003")
@@ -28,4 +28,7 @@ TOPOLOGY_RULE_IDS = (
     "BACKEND-002",
     "BACKEND-003",
     "PLAN-001",
+    "PLAN-002",
+    "ADDR-001",
+    "ADDR-002",
 )

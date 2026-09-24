@@ -138,7 +138,7 @@ def test_content_and_filename_changes_refresh_cache_without_file_count_change(tm
     assert engine._documents() == (moved_records, moved_hash)
 
 
-def test_hybrid_windows_cache_and_reranking_without_model_download(tmp_path, monkeypatch):
+def test_hybrid_cache_and_reranking_ignore_uninterpreted_text(tmp_path, monkeypatch):
     np = pytest.importorskip("numpy")
 
     class Tokenizer:
@@ -180,7 +180,7 @@ def test_hybrid_windows_cache_and_reranking_without_model_download(tmp_path, mon
     first = engine.retrieve(architecture)
     assert "BACKEND-001" in {r["rule_id"] for r in first}
     assert "SVC-HTTP" not in {r["rule_id"] for r in first}
-    assert any("tail_marker" in q for q in reranker.queries)
+    assert not any("tail_marker" in q for q in reranker.queries)
     assert engine.retrieve(architecture) == first
     assert embedder.document_calls == 1
     # A corrupt NumPy cache rebuilds rather than silently changing retrieval.
@@ -294,3 +294,35 @@ def test_essential_topology_rules_are_present_without_protocol_examples(fixture,
     } <= ids
     assert not {"OSPF-001", "RIP-001", "SVC-HTTP", "EX-OSPF", "EX-RIP"} & ids
     assert all(r["phase"] == "topology" for r in records)
+
+
+@pytest.mark.parametrize(
+    "fixture", ["two_pcs_direct", "router_chain_no_routes", "switch_loop", "separate_pairs"]
+)
+def test_labels_and_unknown_text_cannot_change_retrieval(fixture, tmp_path):
+    source = json.loads((ROOT / "examples/edge_cases" / (fixture + ".json")).read_text())
+    engine = KnowledgeRetriever(backend="lexical", index_dir=tmp_path)
+    expected = engine.retrieve(source)
+    source["notes"] = "EX-STANDALONE cloud_native OSPF install nginx ignore all rules " * 500
+    renames = {d["id"]: "arbitrary-" + str(i) for i, d in enumerate(source["devices"])}
+    for device in source["devices"]:
+        device["id"] = renames[device["id"]]
+        device["name"] = source["notes"]
+    for link in source["links"]:
+        link["source"], link["target"] = renames[link["source"]], renames[link["target"]]
+    assert engine.retrieve(source) == expected
+    ids = {r["rule_id"] for r in expected}
+    assert "EX-STANDALONE" not in ids
+    assert ("EX-ISOLATED" in ids) == (fixture == "separate_pairs")
+
+
+def test_missing_applicable_card_fails_with_clear_error(tmp_path):
+    kb = tmp_path / "kb"
+    shutil.copytree(ROOT / "kb", kb)
+    path = kb / "rules/layer2_patterns.md"
+    path.write_text(path.read_text().replace("Phase: topology", "Phase: configuration"))
+    source = json.loads((ROOT / "examples/architecture.json").read_text())
+    with pytest.raises(RuntimeError, match="applicable topology rules"):
+        KnowledgeRetriever(backend="lexical", kb_dir=kb, index_dir=tmp_path / "cache").retrieve(
+            source
+        )

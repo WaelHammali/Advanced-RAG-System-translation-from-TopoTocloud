@@ -55,7 +55,10 @@ def _argument_parser() -> argparse.ArgumentParser:
             "--retrieval", choices=["hybrid", "lexical"], default=RETRIEVAL_BACKEND
         )
         command.add_argument(
-            "--top-k", type=int, default=TOP_K, help="Relevant records, plus core rules"
+            "--top-k",
+            type=int,
+            default=TOP_K,
+            help="Optional ranked records, plus required topology rules",
         )
     check = subcommands.add_parser(
         "check", help="Check architecture readiness without retrieval or an LLM."

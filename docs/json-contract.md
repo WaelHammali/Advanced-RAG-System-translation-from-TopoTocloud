@@ -33,7 +33,9 @@ limitations. They never select a different translation mode or configure softwar
 The application returns `cloud_plan`, nonempty retrieved `rule_ids`, `limitations`,
 the unchanged `architecture` and `knowledge` provenance. Python constructs the
 plan and mandatory warnings/dependencies. Groq only returns an internal compact
-review containing `rule_ids` and additional `limitations`. The public JSON shape
+review containing `rule_ids` and optional selections from reviewed `limitations`.
+Arbitrary model prose, instructions and runtime success claims are rejected.
+The public JSON shape
 and plan contract version remain unchanged.
 
 `cloud_plan` has the following enforced fields:

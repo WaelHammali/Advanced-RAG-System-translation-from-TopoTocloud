@@ -61,8 +61,12 @@ Groq uses GPT-OSS 120B by default, with 20B as the supported alternative. Reques
 use strict JSON Schema mode, temperature zero, medium reasoning, and a 1,536-token
 completion cap including reasoning. The internal schema allows only `rule_ids`
 and `limitations`; extra fields, fabricated citations and duplicate IDs fail.
-Reviews may contain at most eight additional limitations of 400 characters each. SDK retries and provider/model fallback are
-disabled. Before creating the API client, `request_budget.py` counts visible prompt
+Review limitations must be unique verbatim selections from a small, role-aware
+catalog of reviewed caveats. Python rejects invented/rewritten caveats even if
+a client bypasses the provider schema. Mandatory warnings are always attached
+independently. Citation relevance still requires evaluation: a schema cannot prove
+semantic reasoning accuracy. SDK retries and provider/model fallback are disabled.
+Before creating the API client, `request_budget.py` counts visible prompt
 and response-schema text with the GPT-OSS `o200k_harmony` tokenizer. It reserves
 256 tokens for provider framing and the full completion cap, rejecting estimates
 over the local 7,000-token budget. Required context and graph facts are never

@@ -554,3 +554,27 @@ def test_model_limitations_have_a_bounded_size(architecture, limitations):
     payload = {"rule_ids": ["CORE-001"], "limitations": limitations}
     with pytest.raises(ValueError, match="eight entries"):
         plan_with_rag(architecture, RECORDS, client=ModelClient(json.dumps(payload)))
+
+
+@pytest.mark.parametrize(
+    "claim",
+    [
+        "Ping was observed to pass.",
+        "Install OSPF now.",
+        "Router node 2 must receive another interface.",
+        "AWS hosting is free.",
+    ],
+)
+def test_unreviewed_model_claims_cannot_enter_public_limitations(architecture, claim):
+    payload = {"rule_ids": ["CORE-001"], "limitations": [claim]}
+    with pytest.raises(ValueError, match="outside the reviewed options"):
+        plan_with_rag(architecture, RECORDS, client=ModelClient(json.dumps(payload)))
+
+
+def test_applicable_reviewed_limitations_can_be_selected(architecture):
+    from net2cloud.review_context import limitation_options
+
+    options = limitation_options(architecture)
+    payload = {"rule_ids": ["CORE-001"], "limitations": options}
+    output = plan_with_rag(architecture, RECORDS, client=ModelClient(json.dumps(payload)))
+    assert set(options) <= set(output["limitations"])

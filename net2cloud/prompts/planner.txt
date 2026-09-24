@@ -18,10 +18,11 @@ unknown extensions, address warnings, switch cycles, unverified runtime behavior
 later configuration, provisional sizing/pricing and unresolved management/bootstrap.
 
 Select applicable retrieved Rule-IDs as a nonempty list of unique strings.
-In limitations, add at most eight concise additional unresolved requirements
-(maximum 400 characters each). Use an empty list when there is nothing to add.
-Only state limitations supported by the topology and knowledge. Conditions in
-examples are hypothetical unless present in this topology. Do not invent VLANs,
+In limitations, select only applicable entries from limitation_options, copying
+each selected entry verbatim and at most once. Return an empty list if none adds
+useful context. These are reviewed caveats, not instructions to change the graph.
+Never invent or rewrite a limitation. Conditions in examples are hypothetical
+unless present in this topology. Do not invent VLANs,
 protocol settings or requirements from a merely similar example. Missing remote
 routes must remain missing; local traffic does not need an unrelated router.
 Never claim deployment, measured packet behavior, exact vendor emulation or free AWS.

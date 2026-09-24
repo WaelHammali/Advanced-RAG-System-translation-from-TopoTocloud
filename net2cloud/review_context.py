@@ -17,6 +17,24 @@ _METADATA = (
 )
 
 
+def limitation_options(architecture: JSONObject) -> list[str]:
+    """Reviewed, conditional caveats; free-form model claims are not publishable."""
+    roles = {d["type"].lower() for d in architecture["devices"]}
+    options = [
+        "Linux runtimes do not establish exact vendor hardware or operating-system behavior.",
+        "Runtime link state, interface state and ICMP filtering require packet-level verification.",
+    ]
+    if roles & {"switch", "bridge"}:
+        options.append(
+            "The switch runtime must preserve individual ports and switching paths; flattening source switches would change fault behavior."
+        )
+    if "router" in roles:
+        options.append(
+            "Routing-daemon installation, protocol support and convergence remain unverified until the later configuration stage."
+        )
+    return options
+
+
 def review_context(
     architecture: JSONObject, plan: JSONObject, records: list[KnowledgeRecord]
 ) -> JSONObject:
@@ -65,5 +83,6 @@ def review_context(
             ],
         },
         "hosting": {"workers": 1, "instance_type": plan["hosting"]["instance_type"]},
+        "limitation_options": limitation_options(architecture),
         "knowledge": knowledge,
     }

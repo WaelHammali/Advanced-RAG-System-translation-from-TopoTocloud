@@ -70,7 +70,7 @@ def _parse_review(content: str) -> JSONObject:
     return plan
 
 
-def _response_format(rule_ids: list[str]) -> JSONObject:
+def _response_format(rule_ids: list[str], limitations: list[str]) -> JSONObject:
     """Provider schema improves syntax; local validation still enforces semantics."""
     return {
         "type": "json_schema",
@@ -81,7 +81,10 @@ def _response_format(rule_ids: list[str]) -> JSONObject:
                 "type": "object",
                 "properties": {
                     "rule_ids": {"type": "array", "items": {"type": "string", "enum": rule_ids}},
-                    "limitations": {"type": "array", "items": {"type": "string"}},
+                    "limitations": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": limitations},
+                    },
                 },
                 "required": ["rule_ids", "limitations"],
                 "additionalProperties": False,
@@ -124,7 +127,7 @@ def plan_with_rag(
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": dumps_json(context)},
     ]
-    response_format = _response_format(rule_ids)
+    response_format = _response_format(rule_ids, context["limitation_options"])
     require_request_budget(messages, response_format)
     if client is None:
         try:
@@ -166,6 +169,10 @@ def plan_with_rag(
         )
     if not plan["rule_ids"]:
         raise PlanResponseError("The plan must cite at least one retrieved rule.")
+    if set(plan["limitations"]) - set(context["limitation_options"]):
+        raise PlanResponseError("Model returned limitations outside the reviewed options.")
+    if len(set(plan["limitations"])) != len(plan["limitations"]):
+        raise PlanResponseError("limitations must not contain duplicates.")
     plan["cloud_plan"] = required_plan
     plan["limitations"] = list(
         dict.fromkeys([*required_limitations(architecture), *plan["limitations"]])

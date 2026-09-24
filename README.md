@@ -36,6 +36,12 @@ request. Free-tier availability and limits can change; see
 [billing](https://console.groq.com/docs/billing-faqs).
 No paid API calls or AWS deployments are needed to run the tests.
 
+Planning uses a compact, strict-schema Groq review and checks a local token budget
+before any API request. It keeps the full topology and required rules or fails
+explicitly. The GPT-OSS tokenizer vocabulary is downloaded once by tiktoken;
+`TIKTOKEN_CACHE_DIR` can point to a prepared cache. See the
+[request and token policy](docs/architecture.md#contract-and-execution-limits).
+
 `--retrieval lexical` avoids embedding-model downloads. Default hybrid retrieval
 uses local embeddings and reranking. Configuration lives in
 [net2cloud/config.py](net2cloud/config.py); [.env.example](.env.example) lists

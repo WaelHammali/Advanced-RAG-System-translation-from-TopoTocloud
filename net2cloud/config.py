@@ -12,6 +12,8 @@ INDEX_DIR = Path(os.environ.get("NET2TF_INDEX_DIR", ROOT_DIR / ".cache" / "net2c
 SUPPORTED_PLAN_MODELS = ("openai/gpt-oss-120b", "openai/gpt-oss-20b")
 PLAN_MODEL = os.environ.get("NET2TF_PLAN_MODEL", SUPPORTED_PLAN_MODELS[0])
 PLAN_MAX_COMPLETION_TOKENS = 1536
+# Conservative per-request policy, not a promise about account quota/availability.
+PLAN_REQUEST_TOKEN_BUDGET = 7000
 EMBED_MODEL = os.environ.get("NET2TF_EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 RERANK_MODEL = os.environ.get("NET2TF_RERANK_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
 RETRIEVAL_BACKEND = os.environ.get("NET2TF_RETRIEVAL_BACKEND", "hybrid")

@@ -9,6 +9,7 @@ from .contracts import JSONObject, KnowledgeRecord
 from .json_io import dumps_json, loads_json
 from .plan_contract import required_cloud_plan, required_limitations, validate_cloud_plan
 from .readiness import require_ready
+from .request_budget import require_request_budget
 from .review_context import review_context
 
 SYSTEM_PROMPT = (ROOT_DIR / "net2cloud" / "prompts" / "planner.txt").read_text(encoding="utf-8")
@@ -119,6 +120,12 @@ def plan_with_rag(
     ):
         raise ValueError("Only behavioral topology knowledge is accepted for planning.")
     context = review_context(architecture, required_plan, retrieved_chunks)
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": dumps_json(context)},
+    ]
+    response_format = _response_format(rule_ids)
+    require_request_budget(messages, response_format)
     if client is None:
         try:
             from groq import Groq
@@ -135,14 +142,8 @@ def plan_with_rag(
             max_completion_tokens=PLAN_MAX_COMPLETION_TOKENS,
             reasoning_effort="medium",
             include_reasoning=False,
-            response_format=_response_format(rule_ids),
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": dumps_json(context),
-                },
-            ],
+            response_format=response_format,
+            messages=messages,
         )
     except Exception as error:
         if getattr(error, "status_code", None) == 429:

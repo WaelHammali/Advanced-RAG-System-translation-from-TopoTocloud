@@ -62,9 +62,22 @@ use strict JSON Schema mode, temperature zero, medium reasoning, and a 1,536-tok
 completion cap including reasoning. The internal schema allows only `rule_ids`
 and `limitations`; extra fields, fabricated citations and duplicate IDs fail.
 Reviews may contain at most eight additional limitations of 400 characters each. SDK retries and provider/model fallback are
-disabled. Large inputs/plans may exceed free-tier request/completion limits even
-inside the hosting profile's node limit; truncation fails rather than losing nodes.
-No input size guarantees or live-model success claims are made by offline tests.
+disabled. Before creating the API client, `request_budget.py` counts visible prompt
+and response-schema text with the GPT-OSS `o200k_harmony` tokenizer. It reserves
+256 tokens for provider framing and the full completion cap, rejecting estimates
+over the local 7,000-token budget. Required context and graph facts are never
+truncated to squeeze through. This is an estimate: Groq framing, remaining quota,
+account tier and concurrent requests can still cause provider rejection.
+
+The tokenizer vocabulary downloads on first use and is cached by tiktoken; set
+`TIKTOKEN_CACHE_DIR` to a prepared cache for offline operation. Missing dependencies
+or tokenizer failures stop before Groq. Offline tests use a synthetic tokenizer;
+recorded evaluations distinguish those tests from actual token measurements.
+Truncated model output still fails without publishing a plan.
+
+References: [Groq structured output](https://console.groq.com/docs/structured-outputs),
+[Groq rate limits](https://console.groq.com/docs/rate-limits), and the
+[GPT-OSS tokenizer](https://github.com/openai/gpt-oss/blob/main/gpt_oss/tokenizer.py).
 
 The plan is a versioned, structurally checked specification. An external runtime
 must actually create the namespaces, bridges and veth cables; provisioning EC2

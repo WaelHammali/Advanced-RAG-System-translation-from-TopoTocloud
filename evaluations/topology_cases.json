@@ -1,0 +1,11 @@
+[
+  {"id":"shared_lan","input":"examples/architecture.json","ready":true,"required_rules":["L2-001","L2-003","EX-LAN","ROUTE-001"],"forbidden_rules":["EX-STANDALONE","EX-ISOLATED","EX-PC-DIRECT","EX-PREFIX31"]},
+  {"id":"direct_hosts","input":"examples/edge_cases/two_pcs_direct.json","ready":true,"required_rules":["EX-PC-DIRECT"],"forbidden_rules":["EX-STANDALONE","EX-ISOLATED","EX-LAN","EX-PREFIX31"]},
+  {"id":"prefix31","input":"examples/edge_cases/two_pcs_31.json","ready":true,"required_rules":["EX-PC-DIRECT","EX-PREFIX31"],"forbidden_rules":["EX-STANDALONE","EX-ISOLATED","EX-LAN"]},
+  {"id":"prefix32","input":"examples/edge_cases/two_pcs_32.json","ready":true,"required_rules":["EX-PC-DIRECT","EX-PREFIX31"],"forbidden_rules":["EX-STANDALONE","EX-ISOLATED","EX-LAN"]},
+  {"id":"router_chain","input":"examples/edge_cases/router_chain_no_routes.json","ready":true,"required_rules":["ROUTE-001"],"forbidden_rules":["EX-STANDALONE","EX-ISOLATED","EX-LAN","EX-PC-DIRECT","EX-PREFIX31"]},
+  {"id":"disconnected_pairs","input":"examples/edge_cases/separate_pairs.json","ready":true,"required_rules":["EX-PC-DIRECT","EX-ISOLATED"],"forbidden_rules":["EX-STANDALONE","EX-LAN","EX-PREFIX31"]},
+  {"id":"switch_cycle","input":"examples/edge_cases/switch_loop.json","ready":true,"required_rules":["L2-001","L2-003"],"forbidden_rules":["EX-STANDALONE","EX-ISOLATED","EX-LAN","EX-PC-DIRECT","EX-PREFIX31"]},
+  {"id":"isolated_pc","input":"examples/edge_cases/single_pc.json","ready":false,"required_errors":["missing_links","isolated_device"]},
+  {"id":"endpoint_outside_declared_link_network","input":"examples/edge_cases/two_pcs_different_subnets.json","ready":false,"required_errors":["link_ip_outside_network"]}
+]

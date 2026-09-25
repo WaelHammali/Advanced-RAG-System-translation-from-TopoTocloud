@@ -75,9 +75,9 @@ kb/
   manifest.json      Generated inventory and content hashes
 docs/               Human guides: architecture, contract, validation, edge cases
 examples/            Runnable source JSON and illustrative AWS plan JSON
-evaluations/        Conceptual network-behavior scenarios
+evaluations/        Topology retrieval suite, conceptual scenarios and measured reports
 tests/              Offline regression tests
-tools/              Knowledge-base integrity checker
+tools/              Knowledge-base checker and repeatable topology evaluation
 ```
 
 `kb` and `docs` serve different readers. **Only `kb` is retrieved by the RAG.**
@@ -93,11 +93,19 @@ python -m pip install -r requirements-dev.txt
 python -m ruff check .
 python -m ruff format --check .
 python tools/validate_knowledge_base.py
+python tools/evaluate_rag.py
 python -m pytest -q
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Deployment generators and archived legacy
 code have been removed; their previous versions remain available in Git history.
+
+The topology evaluation covers required-rule retrieval, excluded examples and
+invariance under renamed labels and misleading unknown text. Add `--token-budget`
+with a cached GPT-OSS tokenizer to measure request sizes, or `--retrieval hybrid`
+to evaluate installed embedding/reranking models. It makes no Groq or AWS calls;
+hybrid models and the tokenizer may download on first use. These checks do not
+measure live packet behavior or establish a general model accuracy percentage.
 
 ## Clarification and later configuration
 

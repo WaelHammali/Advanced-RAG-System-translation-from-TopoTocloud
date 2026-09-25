@@ -11,6 +11,7 @@ python -m pip install -r requirements-dev.txt
 python -m ruff check .
 python -m ruff format --check .
 python tools/validate_knowledge_base.py
+python tools/evaluate_rag.py
 python -m pytest -q
 ```
 
@@ -26,7 +27,8 @@ All application modules are in `net2cloud/`. `app.py` at repository root is only
 compatibility launcher. See [architecture](docs/architecture.md) for module roles.
 Preserve source values and unknown extension fields. Return structured readiness
 errors before retrieval; never infer missing addresses or repair inconsistent
-ones. The model returns only the documented AWS envelope.
+ones. Python constructs the AWS plan; the model returns only retrieved citations
+and verbatim selections from reviewed limitations. Never accept model plan fields.
 
 Use [kb/rules](kb/rules) for canonical networking/AWS knowledge and
 [kb/examples](kb/examples) for behavioral illustrations. `docs/` contains app guides,

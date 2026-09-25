@@ -24,4 +24,5 @@ jobs:
       - run: python -m ruff check .
       - run: python -m ruff format --check .
       - run: python tools/validate_knowledge_base.py
+      - run: python tools/evaluate_rag.py
       - run: python -m pytest -q

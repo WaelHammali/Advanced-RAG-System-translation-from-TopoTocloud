@@ -1,0 +1,352 @@
+{
+  "schema_version": "1.0",
+  "evaluation": "compact_review_with_deterministic_plan",
+  "utc_dates": [
+    "2026-09-24",
+    "2026-09-25"
+  ],
+  "provider": "groq",
+  "model": "openai/gpt-oss-120b",
+  "retrieval_backend": "lexical",
+  "application_behavior_commit": "aa76a38109f41baa629befb962c37214fbce1d6d",
+  "settings": {
+    "temperature": 0,
+    "reasoning_effort": "medium",
+    "max_completion_tokens": 1536,
+    "response_format": "json_schema",
+    "strict": true,
+    "local_request_token_budget": 7000
+  },
+  "live_requests_this_work": 4,
+  "final_cases_passed": 3,
+  "automatic_retries": 0,
+  "model_fallbacks": 0,
+  "reported_final_tokens": 13854,
+  "reported_tokens_including_prototype": 19098,
+  "offline_regression_tests_passed": 233,
+  "retrieval_evaluation": "evaluations/topology-2026-09-24.json",
+  "input_gate_checks": [
+    {
+      "case": "empty",
+      "status": "pass",
+      "model_requests": 0,
+      "issue_count": 2
+    },
+    {
+      "case": "single_pc",
+      "status": "pass",
+      "model_requests": 0,
+      "issue_count": 2
+    },
+    {
+      "case": "missing_ip",
+      "status": "pass",
+      "model_requests": 0,
+      "issue_count": 1
+    },
+    {
+      "case": "unknown_link_target",
+      "status": "pass",
+      "model_requests": 0,
+      "issue_count": 3
+    }
+  ],
+  "previous_evaluation": "evaluations/live/groq-2026-09-24.json",
+  "comparisons": [
+    {
+      "case": "direct_pcs",
+      "previous_status": "pass",
+      "current_status": "pass",
+      "previous_total_tokens": 6579,
+      "current_total_tokens": 4018,
+      "total_token_reduction_percent": 38.9
+    },
+    {
+      "case": "router_chain",
+      "previous_status": "pass",
+      "current_status": "pass",
+      "previous_total_tokens": 8171,
+      "current_total_tokens": 4859,
+      "total_token_reduction_percent": 40.5
+    },
+    {
+      "case": "small_lan",
+      "previous_status": "blocked_request_limit",
+      "current_status": "pass"
+    }
+  ],
+  "prototype_request": {
+    "case": "small_lan",
+    "input": "examples/architecture.json",
+    "model": "openai/gpt-oss-120b",
+    "retrieval": "lexical",
+    "git_commit": "41ed3389104fa6da71b2ff708f9b4ac672d80111",
+    "started_at": "2026-09-24T09:52:16.788223+00:00",
+    "model_requests": 1,
+    "retries": 0,
+    "deployment_tested": false,
+    "preflight": {
+      "content_tokens": 3442,
+      "schema_tokens": 193,
+      "framing_allowance_tokens": 256,
+      "completion_reserve_tokens": 1536,
+      "estimated_total_tokens": 5427,
+      "budget_tokens": 7000
+    },
+    "message_characters": 16150,
+    "api_latency_seconds": 4.217,
+    "response_model": "openai/gpt-oss-120b",
+    "finish_reason": "stop",
+    "usage": {
+      "prompt_tokens": 3711,
+      "completion_tokens": 1533,
+      "total_tokens": 5244,
+      "prompt_time": 0.156458793,
+      "completion_time": 3.197322958,
+      "total_time": 3.353781751
+    },
+    "rate_limits": {
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-tokens": "3977",
+      "x-ratelimit-reset-tokens": "30.172s",
+      "x-ratelimit-remaining-requests": "999"
+    },
+    "status": "pass",
+    "source_devices": 5,
+    "source_links": 4,
+    "instance_type": "t3a.small",
+    "cited_rule_ids": [
+      "CORE-001",
+      "CORE-002",
+      "INPUT-001",
+      "ADDR-001",
+      "L2-001",
+      "MAP-001",
+      "BACKEND-001",
+      "PLAN-001"
+    ],
+    "limitation_count": 12,
+    "elapsed_seconds": 4.398,
+    "interpretation": "Structural plan passed, but manual review found speculative free-form caveats. The final code rejects all unreviewed limitation text; final results below use that fix."
+  },
+  "cases": [
+    {
+      "case": "direct_pcs",
+      "input": "examples/edge_cases/two_pcs_direct.json",
+      "model": "openai/gpt-oss-120b",
+      "retrieval": "lexical",
+      "git_commit": "aa76a38109f41baa629befb962c37214fbce1d6d",
+      "started_at": "2026-09-25T01:03:39.508370+00:00",
+      "model_requests": 1,
+      "retries": 0,
+      "deployment_tested": false,
+      "preflight": {
+        "content_tokens": 2708,
+        "schema_tokens": 214,
+        "framing_allowance_tokens": 256,
+        "completion_reserve_tokens": 1536,
+        "estimated_total_tokens": 4714,
+        "budget_tokens": 7000
+      },
+      "message_characters": 13166,
+      "api_latency_seconds": 2.79,
+      "response_model": "openai/gpt-oss-120b",
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 2997,
+        "completion_tokens": 1021,
+        "total_tokens": 4018,
+        "prompt_time": 0.119264083,
+        "completion_time": 2.120739659,
+        "total_time": 2.240003742
+      },
+      "rate_limits": {
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-tokens": "4774",
+        "x-ratelimit-reset-tokens": "24.195s",
+        "x-ratelimit-remaining-requests": "999"
+      },
+      "status": "pass",
+      "source_devices": 2,
+      "source_links": 1,
+      "instance_type": "t3a.micro",
+      "cited_rule_ids": [
+        "CORE-001",
+        "CORE-002",
+        "CORE-003",
+        "MAP-001",
+        "BACKEND-001",
+        "BACKEND-002",
+        "BACKEND-003",
+        "PLAN-001",
+        "PLAN-002",
+        "ADDR-001",
+        "ADDR-002",
+        "EX-PC-DIRECT",
+        "L2-001"
+      ],
+      "limitation_count": 6,
+      "elapsed_seconds": 2.997,
+      "checks": {
+        "source_preserved": true,
+        "exact_plan_contract": true,
+        "added_configuration_empty": true,
+        "citations_from_retrieved_context": true,
+        "limitations_from_reviewed_options": true
+      },
+      "reviewed_limitations": [
+        "Linux runtimes do not establish exact vendor hardware or operating-system behavior.",
+        "Runtime link state, interface state and ICMP filtering require packet-level verification."
+      ]
+    },
+    {
+      "case": "router_chain",
+      "input": "examples/edge_cases/router_chain_no_routes.json",
+      "model": "openai/gpt-oss-120b",
+      "retrieval": "lexical",
+      "git_commit": "6e53610b29e563ac5afdeb35558badf0a7da69a5",
+      "started_at": "2026-09-25T01:04:41.922616+00:00",
+      "model_requests": 1,
+      "retries": 0,
+      "deployment_tested": false,
+      "preflight": {
+        "content_tokens": 3019,
+        "schema_tokens": 232,
+        "framing_allowance_tokens": 256,
+        "completion_reserve_tokens": 1536,
+        "estimated_total_tokens": 5043,
+        "budget_tokens": 7000
+      },
+      "message_characters": 14411,
+      "api_latency_seconds": 3.962,
+      "response_model": "openai/gpt-oss-120b",
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 3325,
+        "completion_tokens": 1534,
+        "total_tokens": 4859,
+        "prompt_time": 0.136480564,
+        "completion_time": 3.153991299,
+        "total_time": 3.290471863
+      },
+      "rate_limits": {
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-tokens": "4444",
+        "x-ratelimit-reset-tokens": "26.67s",
+        "x-ratelimit-remaining-requests": "998"
+      },
+      "status": "pass",
+      "source_devices": 4,
+      "source_links": 3,
+      "instance_type": "t3a.small",
+      "cited_rule_ids": [
+        "CORE-001",
+        "CORE-002",
+        "CORE-003",
+        "INPUT-001",
+        "ADDR-001",
+        "ADDR-002",
+        "ROUTE-001",
+        "L2-001",
+        "MAP-001",
+        "MAP-002",
+        "BACKEND-001",
+        "BACKEND-002",
+        "BACKEND-003",
+        "PLAN-001",
+        "PLAN-002"
+      ],
+      "limitation_count": 7,
+      "elapsed_seconds": 4.157,
+      "checks": {
+        "source_preserved": true,
+        "exact_plan_contract": true,
+        "added_configuration_empty": true,
+        "citations_from_retrieved_context": true,
+        "limitations_from_reviewed_options": true
+      },
+      "reviewed_limitations": [
+        "Linux runtimes do not establish exact vendor hardware or operating-system behavior.",
+        "Runtime link state, interface state and ICMP filtering require packet-level verification.",
+        "Routing-daemon installation, protocol support and convergence remain unverified until the later configuration stage."
+      ]
+    },
+    {
+      "case": "small_lan",
+      "input": "examples/architecture.json",
+      "model": "openai/gpt-oss-120b",
+      "retrieval": "lexical",
+      "git_commit": "aa76a38109f41baa629befb962c37214fbce1d6d",
+      "started_at": "2026-09-24T09:55:32.766238+00:00",
+      "model_requests": 1,
+      "retries": 0,
+      "deployment_tested": false,
+      "preflight": {
+        "content_tokens": 3534,
+        "schema_tokens": 269,
+        "framing_allowance_tokens": 256,
+        "completion_reserve_tokens": 1536,
+        "estimated_total_tokens": 5595,
+        "budget_tokens": 7000
+      },
+      "message_characters": 16665,
+      "api_latency_seconds": 2.956,
+      "response_model": "openai/gpt-oss-120b",
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 3873,
+        "completion_tokens": 1104,
+        "total_tokens": 4977,
+        "prompt_time": 0.239795883,
+        "completion_time": 2.311638533,
+        "total_time": 2.551434416
+      },
+      "rate_limits": {
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-tokens": "2594",
+        "x-ratelimit-reset-tokens": "40.544s",
+        "x-ratelimit-remaining-requests": "999"
+      },
+      "status": "pass",
+      "source_devices": 5,
+      "source_links": 4,
+      "instance_type": "t3a.small",
+      "cited_rule_ids": [
+        "CORE-001",
+        "CORE-002",
+        "CORE-003",
+        "MAP-001",
+        "BACKEND-001",
+        "BACKEND-002",
+        "PLAN-001",
+        "PLAN-002",
+        "ADDR-001",
+        "L2-001",
+        "L2-003"
+      ],
+      "limitation_count": 8,
+      "elapsed_seconds": 3.136,
+      "checks": {
+        "source_preserved": true,
+        "exact_plan_contract": true,
+        "added_configuration_empty": true,
+        "citations_from_retrieved_context": true,
+        "limitations_from_reviewed_options": true
+      },
+      "reviewed_limitations": [
+        "Linux runtimes do not establish exact vendor hardware or operating-system behavior.",
+        "Runtime link state, interface state and ICMP filtering require packet-level verification.",
+        "The switch runtime must preserve individual ports and switching paths; flattening source switches would change fault behavior.",
+        "Routing-daemon installation, protocol support and convergence remain unverified until the later configuration stage."
+      ]
+    }
+  ],
+  "limits": [
+    "One final sample per topology; these results are not a general model-accuracy percentage.",
+    "Real hybrid embedding/reranking models were not tested; lexical retrieval was used for all live calls.",
+    "No AWS resources, Terraform/Ansible generators, routing daemons or actual packet tests were executed.",
+    "The local token estimate is not an exact provider serialization or account-quota measurement.",
+    "Router-chain completion used 1534 of the 1536-token allowance including reasoning. Longer reviews may truncate and will fail without publishing a plan.",
+    "Provider account billing tier was not inspected. No automatic retries or paid-model fallbacks were used."
+  ]
+}

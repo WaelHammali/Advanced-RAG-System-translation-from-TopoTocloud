@@ -107,6 +107,12 @@ to evaluate installed embedding/reranking models. It makes no Groq or AWS calls;
 hybrid models and the tokenizer may download on first use. These checks do not
 measure live packet behavior or establish a general model accuracy percentage.
 
+Recorded evidence: [23 topology variants](evaluations/topology-2026-09-24.json)
+and [three final live Groq cases](evaluations/live/groq-2026-09-24-compact-review.json).
+The latter includes the previously rejected five-device LAN, the earlier prototype
+review issue, token usage and explicit testing limits. Live calls used lexical
+retrieval; hybrid quality and runtime packet behavior remain unmeasured.
+
 ## Clarification and later configuration
 
 `check` returns blocking `(entity_id, JSON_pointer, message)` tuples alongside
